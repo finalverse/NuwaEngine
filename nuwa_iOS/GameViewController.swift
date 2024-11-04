@@ -26,6 +26,10 @@ class GameViewController: UIViewController {
         // Set up RenderSystem and Scene
         renderSystem = RenderSystem(device: device)
         scene = Scene()
+        
+        // Add a TriangleEntity to the scene
+        let triangle = TriangleEntity(device: device)
+        scene.addEntity(triangle)
 
         // Configure Metal view
         metalView.delegate = self

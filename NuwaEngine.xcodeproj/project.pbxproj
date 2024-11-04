@@ -22,6 +22,7 @@
 				Core/RenderSystem.swift,
 				Core/Scene.swift,
 				Core/SceneNode.swift,
+				Entities/Primitives/TriangleEntity.swift,
 				Shaders/Shader.metal,
 			);
 			target = B25506732CD93FB600CC18D5 /* nuwa tvOS */;
@@ -35,6 +36,7 @@
 				Core/RenderSystem.swift,
 				Core/Scene.swift,
 				Core/SceneNode.swift,
+				Entities/Primitives/TriangleEntity.swift,
 				Shaders/Shader.metal,
 			);
 			target = B25506832CD93FB600CC18D5 /* nuwa macOS */;
