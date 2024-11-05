@@ -8,12 +8,22 @@
 //import Foundation
 
 // RenderSystem.swift
-// Manages the rendering pipeline using Metal and renders all entities in the scene.
-// update ------
-// - Add a camera parameter to RenderSystem.
-// - Update the render() method to use the camera’s view and projection matrices.
-// update ------
-// - update(scene:deltaTime:): This method iterates over all entities in the scene and updates their SceneNode with the elapsed time, applying animations if they’re present.
+// create: ------
+//  - Manages the rendering pipeline using Metal and renders all entities in the scene.
+// update: ------
+//  - Add a camera parameter to RenderSystem.
+//  - Update the render() method to use the camera’s view and projection matrices.
+// update: ------
+//  - update(scene:deltaTime:): This method iterates over all entities in the scene and updates their SceneNode with the elapsed time, applying animations if they’re present.
+// update: ------
+//  - set up a basic SceneLight manager in RenderSystem to add and manage SceneLights.
+//  - SceneLight Array: RenderSystem has a SceneLights array to store up to 3 SceneLights (matching the shader).
+//  - Set SceneLights: Before rendering each entity, we pass the SceneLights array to the shader via the uniforms buffer.
+// update: ------
+//  - SceneLight Buffer: SceneLightBuffer is a MTLBuffer created to hold an array of SceneLight structs. updateSceneLightBuffer() allocates memory for this buffer based on the current number of SceneLights.
+//  - Setting SceneLights and SceneLightCount: Each frame, we set uniforms.pointee.SceneLights to the address of SceneLightBuffer and uniforms.pointee.SceneLightCount to the number of SceneLights, making these accessible in the shader.
+//  - Limit to 3 Lights: In updateSceneLightBuffer, we limit sceneLights to the first 3 lights (limitedLights) before creating the buffer. This ensures that we don’t exceed the fixed-size array defined in ShaderTypes.h.
+//  - Update sceneLightCount Safely: We set sceneLightCount to min(sceneLights.count, 3) in render to reflect the actual number of lights in the buffer.
 
 import MetalKit
 
@@ -22,7 +32,9 @@ class RenderSystem {
     let commandQueue: MTLCommandQueue
     var pipelineState: MTLRenderPipelineState?
     var clearColor: MTLClearColor = MTLClearColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
-    var camera: Camera?     // add camera parameter
+    var camera: Camera?                     // add camera parameter
+    var sceneLights: [NuwaLight] = []       // Store sceneLights in the scene
+    var sceneLightBuffer: MTLBuffer?        // Buffer to hold sceneLight data for the GPU
 
     init(device: MTLDevice) {
         self.device = device
@@ -42,6 +54,11 @@ class RenderSystem {
         // Configure the vertex descriptor to match VertexIn structure in Shader.metal
         let vertexDescriptor = MTLVertexDescriptor()
         
+        // - Position Attribute (Index 0): The position data (float4) is set at index 0 with no offset.
+        // - Color Attribute (Index 1): The color data (float4) is set at index 1 with an offset based on the size of the position.
+        // - Normal Attribute (Index 2): The normal data (float3) is set at index 2, with an offset accounting for both the position and color attributes.
+        // - Stride Calculation: The stride now includes position + color + normal to ensure each vertex has the full data required.
+                                                                                                                
         // Position attribute at index 0
         vertexDescriptor.attributes[0].format = .float4       // `position` is a float4
         vertexDescriptor.attributes[0].offset = 0
@@ -52,8 +69,13 @@ class RenderSystem {
         vertexDescriptor.attributes[1].offset = MemoryLayout<SIMD4<Float>>.stride
         vertexDescriptor.attributes[1].bufferIndex = 0
 
-        // Set stride for a single vertex (position + color)
-        vertexDescriptor.layouts[0].stride = MemoryLayout<SIMD4<Float>>.stride * 2
+        // Normal attribute at index 2
+        vertexDescriptor.attributes[2].format = .float3       // `normal` is a float3
+        vertexDescriptor.attributes[2].offset = MemoryLayout<SIMD4<Float>>.stride * 2
+        vertexDescriptor.attributes[2].bufferIndex = 0
+
+        // Set stride for a single vertex (position + color + normal)
+        vertexDescriptor.layouts[0].stride = MemoryLayout<SIMD4<Float>>.stride * 2 + MemoryLayout<SIMD3<Float>>.stride
         vertexDescriptor.layouts[0].stepFunction = .perVertex
 
         // Create the pipeline descriptor and attach vertex descriptor
@@ -70,6 +92,20 @@ class RenderSystem {
         }
     }
 
+    func addSceneLight(_ sceneLight: NuwaLight) {
+        sceneLights.append(sceneLight)
+        updateSceneLightBuffer()
+    }
+    
+    private func updateSceneLightBuffer() {
+        // Limit to 3 lights to match the shader's fixed-size array
+        let limitedLights = Array(sceneLights.prefix(3))
+        
+        // Allocate buffer for up to 3 lights
+        let sceneLightDataSize = MemoryLayout<NuwaLight>.stride * limitedLights.count
+        sceneLightBuffer = device.makeBuffer(bytes: limitedLights, length: sceneLightDataSize, options: [])
+    }
+    
     func update(scene: Scene, deltaTime: Float) {
         scene.entities.forEach { $0.node.update(deltaTime: deltaTime) }
     }
@@ -97,12 +133,27 @@ class RenderSystem {
         // Compute the view-projection matrix
         let viewProjectionMatrix = camera.projectionMatrix() * camera.viewMatrix()
 
-        //renderEncoder.setRenderPipelineState(pipelineState)
-
         for entity in scene.entities {
             // Update entity’s uniform buffer with view-projection matrix
-            if var uniforms = entity.uniformBuffer?.contents().bindMemory(to: Uniforms.self, capacity: 1) {
-                uniforms.pointee.modelMatrix = viewProjectionMatrix * entity.node.worldMatrix()
+            if let uniforms = entity.uniformBuffer?.contents().bindMemory(to: Uniforms.self, capacity: 1) {
+                uniforms.pointee.modelMatrix = entity.node.worldMatrix()
+                uniforms.pointee.viewProjectionMatrix = viewProjectionMatrix
+                uniforms.pointee.cameraPosition = camera.position
+
+                // Set sceneLights and sceneLightCount
+                if let lightsPointer = sceneLightBuffer?.contents().assumingMemoryBound(to: NuwaLight.self) {
+                    // Assign up to 3 lights individually, matching the tuple layout
+                    if sceneLights.count > 0 {
+                        uniforms.pointee.sceneLights.0 = lightsPointer[0]
+                    }
+                    if sceneLights.count > 1 {
+                        uniforms.pointee.sceneLights.1 = lightsPointer[1]
+                    }
+                    if sceneLights.count > 2 {
+                        uniforms.pointee.sceneLights.2 = lightsPointer[2]
+                    }
+                    uniforms.pointee.sceneLightCount = Int32(min(sceneLights.count, 3))
+                }
             }
             entity.draw(renderEncoder: renderEncoder)
         }

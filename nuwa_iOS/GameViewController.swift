@@ -41,6 +41,33 @@ class GameViewController: UIViewController {
         camera.aspectRatio = Float(metalView.drawableSize.width / metalView.drawableSize.height)
         renderSystem.camera = camera
         
+        // Add ambient, directional, and point Nuwa lights
+        let ambientSceneLight =
+            NuwaLight(type: 0, // Ambient light
+                      color: SIMD3<Float>(1, 1, 1),
+                      intensity: 0.2,
+                      position: SIMD3<Float>(0, 0, 0), // Ambient lights don't need position, so set to default
+                      direction: SIMD3<Float>(0, 0, 0)) // Ambient lights don't have a direction
+
+        let directionalSceneLight =
+            NuwaLight(type: 1, // Directional light
+                      color: SIMD3<Float>(1, 1, 1),
+                      intensity: 0.8,
+                      position: SIMD3<Float>(0, 0, 0), // Directional lights don't use position
+                      direction: SIMD3<Float>(1, -1, 0)) // Set direction for directional light
+
+        let pointSceneLight =
+            NuwaLight(type: 2, // Point light
+                      color: SIMD3<Float>(1, 0, 0),
+                      intensity: 1.0,
+                      position: SIMD3<Float>(0.5, 0.5, 2.0), // Position for the point light
+                      direction: SIMD3<Float>(0, 0, 0)) // Point lights don't use direction
+
+        // Add these Nuwa lights to the render system
+        renderSystem.addSceneLight(ambientSceneLight)
+        renderSystem.addSceneLight(directionalSceneLight)
+        renderSystem.addSceneLight(pointSceneLight)
+        
         // Create the parent triangle
         let parentTriangle = TriangleEntity(device: device)
         parentTriangle.node.position = SIMD3<Float>(0.2, 0.0, 0.0)      // Offset to the right
@@ -66,16 +93,6 @@ class GameViewController: UIViewController {
 
         self.view.addSubview(metalView)
     }
-    
-    /*
-    override func draw(in view: MTKView) {
-        guard let drawable = view.currentDrawable else { return }
-
-        let deltaTime: Float = 1.0 / Float(view.preferredFramesPerSecond)
-        renderSystem.update(scene: scene, deltaTime: deltaTime)
-        renderSystem.render(scene: scene, drawable: drawable)
-    }
-     */
 }
 
 

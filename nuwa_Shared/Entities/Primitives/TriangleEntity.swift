@@ -24,12 +24,12 @@ class TriangleEntity: Entity {
     
     init(device: MTLDevice) {
         super.init(node: SceneNode(), device: device)
-
-        // Define vertices for a triangle with positions and colors
+        
+        // Define vertices for a triangle with positions, colors, and normals
         let vertices: [Vertex] = [
-            Vertex(position: SIMD4<Float>(0.0,  0.5, 0.0, 1.0), color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)), // Top (Red)
-            Vertex(position: SIMD4<Float>(-0.5, -0.5, 0.0, 1.0), color: SIMD4<Float>(0.0, 1.0, 0.0, 1.0)), // Bottom Left (Green)
-            Vertex(position: SIMD4<Float>(0.5, -0.5, 0.0, 1.0), color: SIMD4<Float>(0.0, 0.0, 1.0, 1.0))  // Bottom Right (Blue)
+            Vertex(position: SIMD4<Float>(0.0,  0.5, 0.0, 1.0), color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0), normal: SIMD3<Float>(0, 0, 1)), // Top (Red)
+            Vertex(position: SIMD4<Float>(-0.5, -0.5, 0.0, 1.0), color: SIMD4<Float>(0.0, 1.0, 0.0, 1.0), normal: SIMD3<Float>(0, 0, 1)), // Bottom Left (Green)
+            Vertex(position: SIMD4<Float>(0.5, -0.5, 0.0, 1.0), color: SIMD4<Float>(0.0, 0.0, 1.0, 1.0), normal: SIMD3<Float>(0, 0, 1))  // Bottom Right (Blue)
         ]
 
         // Create a vertex buffer for the triangle and transformation data
@@ -40,19 +40,16 @@ class TriangleEntity: Entity {
 
     // Draw function to render the triangle
     override func draw(renderEncoder: MTLRenderCommandEncoder) {
-        guard let vertexBuffer = vertexBuffer,
-              let uniformBuffer = uniformBuffer else { return }
+        guard let vertexBuffer = vertexBuffer, let uniformBuffer = uniformBuffer else { return }
 
-        // Update the transformation matrix
-        var uniforms = Uniforms(modelMatrix: node.worldMatrix())
-        memcpy(uniformBuffer.contents(), &uniforms, MemoryLayout<Uniforms>.stride)
-
-        // Set the vertex and uniform buffers
+        // Set the vertex buffer at index 0
         renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+
+        // Set the uniforms buffer for both the vertex and fragment stages at index 1
         renderEncoder.setVertexBuffer(uniformBuffer, offset: 0, index: 1)
-        
-        // Set buffers and draw
+        renderEncoder.setFragmentBuffer(uniformBuffer, offset: 0, index: 1)
+
+        // Draw the triangle
         renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
-        
     }
 }
