@@ -8,6 +8,9 @@
 // SceneNode.swift
 // Represents a node in the scene graph. Holds transformation data and manages a hierarchical structure of children.
 
+// - Parent-Child Relationships: Each SceneNode can now have a parent and multiple children, creating a tree-like structure.
+// - worldMatrix(): The transformation matrix now includes the parent’s transformation matrix, allowing children to inherit transformations from their parents.
+
 import Foundation
 import simd
 
@@ -22,16 +25,19 @@ class SceneNode {
     //Defines the node’s scale in each axis.
     var scale: SIMD3<Float> = SIMD3(1, 1, 1)
     
-    var children: [SceneNode] = []
+    var parent: SceneNode?              // Reference to parent node
+    var children: [SceneNode] = []      // Array to hold child nodes
 
-    // Adds a child node.
+    // Adds a child node and sets this node as the parent
     func addChild(_ child: SceneNode) {
+        child.parent = self
         children.append(child)
     }
 
-    // Removes a child node.
+    // Removes a child node and clears its parent
     func removeChild(_ child: SceneNode) {
         children = children.filter { $0 !== child }
+        child.parent = nil
     }
 
     // Computes the world transformation matrix for this node.
@@ -39,10 +45,15 @@ class SceneNode {
     func worldMatrix() -> float4x4 {
         // Apply scaling, rotation, and translation in the correct order
         var matrix = float4x4(translation: position)
-        //matrix = matrix * float4x4(rotation: rotation)
-        //matrix = matrix * float4x4(scaling: scale)
+
         matrix = float4x4(rotation: rotation) * matrix
         matrix = float4x4(scaling: scale) * matrix
+        
+        // taking parent transformations into account
+        if let parentMatrix = parent?.worldMatrix() {
+            matrix = parentMatrix * matrix
+        }
+        
         return matrix
     }
 }
