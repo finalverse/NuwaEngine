@@ -19,10 +19,19 @@ struct VertexOut {
     float4 color;
 };
 
-// Vertex shader: pass through the position and color of each vertex.
-vertex VertexOut vertex_main(VertexIn in [[stage_in]]) {
+// Uniforms Structure: We define Uniforms to hold the modelMatrix, which will be applied to each vertex.
+struct Uniforms {
+    float4x4 modelMatrix;
+};
+
+// Transformation Application: The vertex shader now multiplies each vertex’s position by the modelMatrix to transform it.
+
+// Vertex shader:  - pass through the position and color of each vertex
+//                 - apply transformation to position
+vertex VertexOut vertex_main(VertexIn in [[stage_in]], constant Uniforms &uniforms [[buffer(1)]]) {
     VertexOut out;
-    out.position = in.position;
+    //out.position = in.position;
+    out.position = uniforms.modelMatrix * in.position;  // Apply transformation
     out.color = in.color;
     return out;
 }

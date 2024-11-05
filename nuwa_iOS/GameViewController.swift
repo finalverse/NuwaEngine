@@ -29,6 +29,10 @@ class GameViewController: UIViewController {
         
         // Add a TriangleEntity to the scene
         let triangle = TriangleEntity(device: device)
+        triangle.node.position = SIMD3<Float>(0.2, 0.0, 0.0)  // Translate right
+        triangle.node.rotation = SIMD3<Float>(0.0, 0.0, .pi / 4)  // Rotate 45 degrees
+        triangle.node.scale = SIMD3<Float>(1.5, 1.5, 1.0)  // Scale up
+        
         scene.addEntity(triangle)
 
         // Configure Metal view
