@@ -5,8 +5,14 @@
 //  Created by Wenyan Qin on 2024-11-05.
 //
 
-// Parent Transformation: parentTriangle is positioned to the right and rotated 45 degrees.
-// Child Inheritance: childTriangle is positioned relative to parentTriangle, so it will move and rotate along with its parent.
+// create ------------
+//  - Parent Transformation: parentTriangle is positioned to the right and rotated 45 degrees.
+//  - Child Inheritance: childTriangle is positioned relative to parentTriangle, so it will move and rotate along with its parent.
+// update ------------
+//  - instantiate the camera in GameViewController and assign it to RenderSystem.
+// update ------
+//  - Rotation Animation: parentTriangle now rotates continuously over 5 seconds.
+//  - Update and Render Loop: We update the scene each frame, applying animations before rendering.
 
 import UIKit
 import MetalKit
@@ -30,10 +36,17 @@ class GameViewController: UIViewController {
         renderSystem = RenderSystem(device: device)
         scene = Scene()
         
+        // Initialize and assign the camera
+        let camera = Camera()
+        camera.aspectRatio = Float(metalView.drawableSize.width / metalView.drawableSize.height)
+        renderSystem.camera = camera
+        
         // Create the parent triangle
         let parentTriangle = TriangleEntity(device: device)
         parentTriangle.node.position = SIMD3<Float>(0.2, 0.0, 0.0)      // Offset to the right
-        parentTriangle.node.rotation = SIMD3<Float>(0.0, 0.0, .pi / 4)  // 45-degree rotation
+        //parentTriangle.node.rotation = SIMD3<Float>(0.0, 0.0, .pi / 4)  // 45-degree rotation
+        parentTriangle.node.animator = Animator(type: .rotation(SIMD3<Float>(0, 0, .pi * 2), duration: 5.0)) // Rotates 360 degrees in 5 seconds
+
 
         // Create the child triangle, attached to the parent
         let childTriangle = TriangleEntity(device: device)
@@ -53,7 +66,18 @@ class GameViewController: UIViewController {
 
         self.view.addSubview(metalView)
     }
+    
+    /*
+    override func draw(in view: MTKView) {
+        guard let drawable = view.currentDrawable else { return }
+
+        let deltaTime: Float = 1.0 / Float(view.preferredFramesPerSecond)
+        renderSystem.update(scene: scene, deltaTime: deltaTime)
+        renderSystem.render(scene: scene, drawable: drawable)
+    }
+     */
 }
+
 
 // Extension to handle Metal view's rendering delegate methods
 extension GameViewController: MTKViewDelegate {
@@ -63,6 +87,11 @@ extension GameViewController: MTKViewDelegate {
 
     func draw(in view: MTKView) {
         guard let drawable = view.currentDrawable else { return }
+        
+        let deltaTime: Float = 1.0 / Float(view.preferredFramesPerSecond)
+        renderSystem.update(scene: scene, deltaTime: deltaTime)
         renderSystem.render(scene: scene, drawable: drawable)
     }
 }
+
+

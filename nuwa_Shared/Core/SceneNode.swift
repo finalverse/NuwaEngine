@@ -7,9 +7,13 @@
 
 // SceneNode.swift
 // Represents a node in the scene graph. Holds transformation data and manages a hierarchical structure of children.
-
+// update -------
 // - Parent-Child Relationships: Each SceneNode can now have a parent and multiple children, creating a tree-like structure.
 // - worldMatrix(): The transformation matrix now includes the parent’s transformation matrix, allowing children to inherit transformations from their parents.
+// update -------
+// - Animator: Each SceneNode can have an optional Animator to manage animations.
+// - Update Method: The update(deltaTime:) method applies animations to the node and recursively updates child nodes.
+
 
 import Foundation
 import simd
@@ -27,6 +31,8 @@ class SceneNode {
     
     var parent: SceneNode?              // Reference to parent node
     var children: [SceneNode] = []      // Array to hold child nodes
+    var animator: Animator?             // Animator to manage animations for this node
+
 
     // Adds a child node and sets this node as the parent
     func addChild(_ child: SceneNode) {
@@ -55,5 +61,11 @@ class SceneNode {
         }
         
         return matrix
+    }
+    
+    // Update the node's transformation if it has an animator
+    func update(deltaTime: Float) {
+        animator?.update(node: self, deltaTime: deltaTime)
+        children.forEach { $0.update(deltaTime: deltaTime) }
     }
 }

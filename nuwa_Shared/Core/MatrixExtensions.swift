@@ -12,6 +12,25 @@ import Foundation
 
 import simd
 
+// Perspective Projection Matrix: This initializer creates a perspective matrix that gives depth to the scene, making closer objects appear larger.
+extension float4x4 {
+    init(perspectiveProjectionFov fovY: Float, aspectRatio: Float, nearPlane: Float, farPlane: Float) {
+        let yScale = 1 / tan(fovY * 0.5)
+        let xScale = yScale / aspectRatio
+        let zRange = farPlane - nearPlane
+        let zScale = -(farPlane + nearPlane) / zRange
+        let wzScale = -2 * farPlane * nearPlane / zRange
+
+        self = float4x4([
+            SIMD4(xScale, 0, 0, 0),
+            SIMD4(0, yScale, 0, 0),
+            SIMD4(0, 0, zScale, -1),
+            SIMD4(0, 0, wzScale, 0)
+        ])
+    }
+}
+
+// transformation matrix
 extension float4x4 {
     // Initializes a translation matrix
     init(translation: SIMD3<Float>) {

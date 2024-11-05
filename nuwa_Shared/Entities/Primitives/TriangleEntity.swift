@@ -8,9 +8,13 @@
 // TriangleEntity.swift
 // A simple triangle entity with vertex data for rendering.
 
+// update -------
 //  - Uniform Buffer: uniformBuffer holds the transformation matrix (modelMatrix) for this entity.
 //  - Updating Transformation Matrix: In draw(renderEncoder:), we update uniformBuffer with the current transformation matrix from node.worldMatrix() before rendering.
 //  - Binding the Buffer: We set uniformBuffer at index 1, matching the Uniforms buffer in the shader.
+// update -------
+//  - TriangleEntity now uses the base Entity initializer, which sets up uniformBuffer.
+//  - In the draw() function, we update uniformBuffer with the transformation matrix (modelMatrix) from node.worldMatrix().
 
 import Foundation
 import MetalKit
@@ -18,11 +22,8 @@ import MetalKit
 class TriangleEntity: Entity {
     var vertexBuffer: MTLBuffer?
     
-    // uniformBuffer holds the transformation matrix (modelMatrix) for this entity.
-    var uniformBuffer: MTLBuffer?
-
     init(device: MTLDevice) {
-        super.init(node: SceneNode())
+        super.init(node: SceneNode(), device: device)
 
         // Define vertices for a triangle with positions and colors
         let vertices: [Vertex] = [
@@ -35,7 +36,6 @@ class TriangleEntity: Entity {
         vertexBuffer = device.makeBuffer(bytes: vertices,
                                          length: MemoryLayout<Vertex>.stride * vertices.count,
                                          options: [])
-        uniformBuffer = device.makeBuffer(length: MemoryLayout<Uniforms>.stride, options: [])
     }
 
     // Draw function to render the triangle
@@ -46,12 +46,13 @@ class TriangleEntity: Entity {
         // Update the transformation matrix
         var uniforms = Uniforms(modelMatrix: node.worldMatrix())
         memcpy(uniformBuffer.contents(), &uniforms, MemoryLayout<Uniforms>.stride)
-        
-        // Set buffers and draw
-        //renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-        //renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+
+        // Set the vertex and uniform buffers
         renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
         renderEncoder.setVertexBuffer(uniformBuffer, offset: 0, index: 1)
+        
+        // Set buffers and draw
         renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        
     }
 }

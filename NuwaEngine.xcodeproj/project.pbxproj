@@ -16,7 +16,9 @@
 		B25506D42CD9480800CC18D5 /* Exceptions for "nuwa_Shared" folder in "nuwa tvOS" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Animation/Animator.swift,
 				Assets.xcassets,
+				Core/Camera.swift,
 				Core/Entity.swift,
 				Core/MatrixExtensions.swift,
 				Core/RenderSystem.swift,
@@ -30,7 +32,9 @@
 		B25506D62CD9480800CC18D5 /* Exceptions for "nuwa_Shared" folder in "nuwa macOS" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Animation/Animator.swift,
 				Assets.xcassets,
+				Core/Camera.swift,
 				Core/Entity.swift,
 				Core/MatrixExtensions.swift,
 				Core/RenderSystem.swift,

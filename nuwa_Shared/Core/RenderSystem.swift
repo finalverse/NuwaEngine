@@ -9,6 +9,11 @@
 
 // RenderSystem.swift
 // Manages the rendering pipeline using Metal and renders all entities in the scene.
+// update ------
+// - Add a camera parameter to RenderSystem.
+// - Update the render() method to use the camera’s view and projection matrices.
+// update ------
+// - update(scene:deltaTime:): This method iterates over all entities in the scene and updates their SceneNode with the elapsed time, applying animations if they’re present.
 
 import MetalKit
 
@@ -17,6 +22,7 @@ class RenderSystem {
     let commandQueue: MTLCommandQueue
     var pipelineState: MTLRenderPipelineState?
     var clearColor: MTLClearColor = MTLClearColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
+    var camera: Camera?     // add camera parameter
 
     init(device: MTLDevice) {
         self.device = device
@@ -64,6 +70,10 @@ class RenderSystem {
         }
     }
 
+    func update(scene: Scene, deltaTime: Float) {
+        scene.entities.forEach { $0.node.update(deltaTime: deltaTime) }
+    }
+    
     func render(scene: Scene, drawable: CAMetalDrawable) {
         guard let pipelineState = pipelineState,
               let commandBuffer = commandQueue.makeCommandBuffer() else {
@@ -76,13 +86,24 @@ class RenderSystem {
         renderPassDescriptor.colorAttachments[0].loadAction = .clear
         renderPassDescriptor.colorAttachments[0].storeAction = .store
 
-        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
+        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor),
+              let camera = camera else {
             return
         }
 
+        // Set the pipeline state once at the beginning of the render pass
         renderEncoder.setRenderPipelineState(pipelineState)
+        
+        // Compute the view-projection matrix
+        let viewProjectionMatrix = camera.projectionMatrix() * camera.viewMatrix()
+
+        //renderEncoder.setRenderPipelineState(pipelineState)
 
         for entity in scene.entities {
+            // Update entity’s uniform buffer with view-projection matrix
+            if var uniforms = entity.uniformBuffer?.contents().bindMemory(to: Uniforms.self, capacity: 1) {
+                uniforms.pointee.modelMatrix = viewProjectionMatrix * entity.node.worldMatrix()
+            }
             entity.draw(renderEncoder: renderEncoder)
         }
 

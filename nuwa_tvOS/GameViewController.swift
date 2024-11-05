@@ -8,38 +8,57 @@
 import UIKit
 import MetalKit
 
-// Our iOS specific view controller
-class GameViewController: UIViewController {
+// Our tvOS/iOS specific view controller
+import UIKit
+import MetalKit
 
-    var renderer: Renderer!
-    var mtkView: MTKView!
+class GameViewController: UIViewController {
+    var metalView: MTKView!
+    var renderSystem: RenderSystem!
+    var scene: Scene!
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        guard let mtkView = self.view as? MTKView else {
-            print("View of Gameview controller is not an MTKView")
-            return
+        metalView = MTKView(frame: self.view.bounds, device: MTLCreateSystemDefaultDevice())
+        guard let device = metalView.device else {
+            fatalError("Metal is not supported on this device")
         }
 
-        // Select the device to render with.  We choose the default device
-        guard let defaultDevice = MTLCreateSystemDefaultDevice() else {
-            print("Metal is not supported")
-            return
-        }
+        renderSystem = RenderSystem(device: device)
+        scene = Scene()
 
-        mtkView.device = defaultDevice
-        mtkView.backgroundColor = UIColor.black
+        // Set up the camera
+        let camera = Camera()
+        camera.aspectRatio = Float(metalView.drawableSize.width / metalView.drawableSize.height)
+        renderSystem.camera = camera
 
-        guard let newRenderer = Renderer(metalKitView: mtkView) else {
-            print("Renderer cannot be initialized")
-            return
-        }
+        // Add entities to the scene
+        let parentTriangle = TriangleEntity(device: device)
+        parentTriangle.node.position = SIMD3<Float>(0.2, 0.0, 0.0)
+        parentTriangle.node.rotation = SIMD3<Float>(0.0, 0.0, .pi / 4)
 
-        renderer = newRenderer
+        let childTriangle = TriangleEntity(device: device)
+        childTriangle.node.position = SIMD3<Float>(0.5, 0.0, 0.0)
+        parentTriangle.node.addChild(childTriangle.node)
 
-        renderer.mtkView(mtkView, drawableSizeWillChange: mtkView.drawableSize)
+        scene.addEntity(parentTriangle)
+        scene.addEntity(childTriangle)
 
-        mtkView.delegate = renderer
+        metalView.delegate = self
+        metalView.clearColor = MTLClearColorMake(0.2, 0.2, 0.2, 1.0)
+        metalView.framebufferOnly = true
+        self.view.addSubview(metalView)
+    }
+}
+
+extension GameViewController: MTKViewDelegate {
+    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+        // Handle size changes if needed
+    }
+
+    func draw(in view: MTKView) {
+        guard let drawable = view.currentDrawable else { return }
+        renderSystem.render(scene: scene, drawable: drawable)
     }
 }
