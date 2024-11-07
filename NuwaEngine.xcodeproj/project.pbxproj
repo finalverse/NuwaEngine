@@ -13,41 +13,53 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		B25506D42CD9480800CC18D5 /* Exceptions for "nuwa_Shared" folder in "nuwa tvOS" target */ = {
+		B25506D42CD9480800CC18D5 /* Exceptions for "nuwa" folder in "nuwa tvOS" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Animation/Animator.swift,
 				Assets.xcassets,
 				Core/Camera.swift,
 				Core/Entity.swift,
+				Core/Material.swift,
 				Core/MatrixExtensions.swift,
 				Core/RenderSystem.swift,
 				Core/Scene.swift,
 				Core/SceneLight.swift,
 				Core/SceneNode.swift,
 				Entities/Primitives/TriangleEntity.swift,
-				Shaders/Shader.metal,
+				Shaders/MasterShader.metal,
 			);
 			target = B25506732CD93FB600CC18D5 /* nuwa tvOS */;
 		};
-		B25506D62CD9480800CC18D5 /* Exceptions for "nuwa_Shared" folder in "nuwa macOS" target */ = {
+		B25506D62CD9480800CC18D5 /* Exceptions for "nuwa" folder in "nuwa macOS" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Animation/Animator.swift,
 				Assets.xcassets,
 				Core/Camera.swift,
 				Core/Entity.swift,
+				Core/Material.swift,
 				Core/MatrixExtensions.swift,
 				Core/RenderSystem.swift,
 				Core/Scene.swift,
 				Core/SceneLight.swift,
 				Core/SceneNode.swift,
 				Entities/Primitives/TriangleEntity.swift,
-				Shaders/Shader.metal,
+				Shaders/MasterShader.metal,
 			);
 			target = B25506832CD93FB600CC18D5 /* nuwa macOS */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		B25508C62CDC84FF00CC18D5 /* Exceptions for "nuwa" folder in "Compile Sources" phase from "nuwa iOS" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = B255065F2CD93FB600CC18D5 /* Sources */;
+			membershipExceptions = (
+				Shaders/ShaderTypes.h,
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B25506652CD93FB600CC18D5 /* nuwa_iOS */ = {
@@ -65,13 +77,14 @@
 			path = nuwa_macOS;
 			sourceTree = "<group>";
 		};
-		B25506C62CD9480800CC18D5 /* nuwa_Shared */ = {
+		B25506C62CD9480800CC18D5 /* nuwa */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				B25506D42CD9480800CC18D5 /* Exceptions for "nuwa_Shared" folder in "nuwa tvOS" target */,
-				B25506D62CD9480800CC18D5 /* Exceptions for "nuwa_Shared" folder in "nuwa macOS" target */,
+				B25508C62CDC84FF00CC18D5 /* Exceptions for "nuwa" folder in "Compile Sources" phase from "nuwa iOS" target */,
+				B25506D42CD9480800CC18D5 /* Exceptions for "nuwa" folder in "nuwa tvOS" target */,
+				B25506D62CD9480800CC18D5 /* Exceptions for "nuwa" folder in "nuwa macOS" target */,
 			);
-			path = nuwa_Shared;
+			path = nuwa;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -104,7 +117,7 @@
 		B25506552CD93FB300CC18D5 = {
 			isa = PBXGroup;
 			children = (
-				B25506C62CD9480800CC18D5 /* nuwa_Shared */,
+				B25506C62CD9480800CC18D5 /* nuwa */,
 				B25506652CD93FB600CC18D5 /* nuwa_iOS */,
 				B25506752CD93FB600CC18D5 /* nuwa_tvOS */,
 				B25506852CD93FB600CC18D5 /* nuwa_macOS */,
@@ -139,7 +152,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				B25506652CD93FB600CC18D5 /* nuwa_iOS */,
-				B25506C62CD9480800CC18D5 /* nuwa_Shared */,
+				B25506C62CD9480800CC18D5 /* nuwa */,
 			);
 			name = "nuwa iOS";
 			packageProductDependencies = (
@@ -310,7 +323,7 @@
 				PRODUCT_NAME = nuwa;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = nuwa_Shared/Shaders/ShaderTypes.h;
+				SWIFT_OBJC_BRIDGING_HEADER = nuwa/Shaders/ShaderTypes.h;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -343,7 +356,7 @@
 				PRODUCT_NAME = nuwa;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = nuwa_Shared/Shaders/ShaderTypes.h;
+				SWIFT_OBJC_BRIDGING_HEADER = nuwa/Shaders/ShaderTypes.h;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
@@ -371,7 +384,7 @@
 				PRODUCT_NAME = nuwa;
 				SDKROOT = appletvos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "nuwa Shared/ShaderTypes.h";
+				SWIFT_OBJC_BRIDGING_HEADER = nuwa/Shaders/ShaderTypes.h;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 15.6;
@@ -399,7 +412,7 @@
 				PRODUCT_NAME = nuwa;
 				SDKROOT = appletvos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "nuwa Shared/ShaderTypes.h";
+				SWIFT_OBJC_BRIDGING_HEADER = nuwa/Shaders/ShaderTypes.h;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 15.6;
@@ -412,7 +425,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "nuwa macOS/nuwa_macOS.entitlements";
+				CODE_SIGN_ENTITLEMENTS = nuwa_macOS/nuwa_macOS.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -432,7 +446,7 @@
 				PRODUCT_NAME = nuwa;
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "nuwa Shared/ShaderTypes.h";
+				SWIFT_OBJC_BRIDGING_HEADER = nuwa/Shaders/ShaderTypes.h;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -442,7 +456,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "nuwa macOS/nuwa_macOS.entitlements";
+				CODE_SIGN_ENTITLEMENTS = nuwa_macOS/nuwa_macOS.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -462,7 +477,7 @@
 				PRODUCT_NAME = nuwa;
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "nuwa Shared/ShaderTypes.h";
+				SWIFT_OBJC_BRIDGING_HEADER = nuwa/Shaders/ShaderTypes.h;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;

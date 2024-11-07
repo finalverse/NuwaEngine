@@ -3,6 +3,7 @@
 xcuserdata/
 DerivedData/
 *.xcuserstate
+*.xcbkptlist
 
 # macOS specific files
 .DS_Store
