@@ -102,7 +102,16 @@ class RenderSystem {
         let lightCount = min(sceneLights.count, 3)  // Limit to 3 lights for simplicity
         var limitedLights = Array(sceneLights.prefix(lightCount))
         
+        // Calculate the buffer size based on the aligned size of SceneLight
+        // Calculate buffer size: aligned size of SceneLight (48 bytes) * number of lights
+        //let sceneLightDataSize = 48 * lightCount
         let sceneLightDataSize = MemoryLayout<SceneLight>.stride * lightCount
+        
+        //print("MemoryLayout<SceneLight>.stride = \(MemoryLayout<SceneLight>.stride)")
+        //print("SceneLight size: \(MemoryLayout<SceneLight>.size)")    // Should be 48 bytes
+        //print("SceneLight stride: \(MemoryLayout<SceneLight>.stride)") // Should also be 48 bytes
+        //print("sceneLightDataSize = \(sceneLightDataSize)")
+        
         sceneLightBuffer = device.makeBuffer(bytes: &limitedLights, length: sceneLightDataSize, options: [])
     }
 
@@ -113,7 +122,9 @@ class RenderSystem {
             entity.updateUniforms(viewProjectionMatrix: camera?.viewProjectionMatrix ?? matrix_identity_float4x4,
                                   cameraPosition: camera?.position ?? SIMD3<Float>(0, 0, 0))
         }
+        updateSceneLightBuffer()  // Refresh light buffer for rendering
     }
+    
 
     /// Renders all entities in the scene, handling lights, materials, and other properties.
     /// Renders all entities in the scene, handling lights, materials, and other properties.
@@ -130,24 +141,35 @@ class RenderSystem {
         renderEncoder.setRenderPipelineState(pipelineState)
         renderEncoder.setDepthStencilState(depthState)
         
-        // Set light buffer and light count for the shaders
+        // Set the viewProjection matrix and camera position for each entity
         let viewProjectionMatrix = camera.projectionMatrix() * camera.viewMatrix()
         var lightCount = Int32(min(sceneLights.count, 3))
-        renderEncoder.setFragmentBuffer(sceneLightBuffer, offset: 0, index: 2)
-        renderEncoder.setFragmentBytes(&lightCount, length: MemoryLayout<Int32>.size, index: 3)
-        
+
+        // Update and set the light buffer
+        if let sceneLightBuffer = sceneLightBuffer {
+            renderEncoder.setFragmentBuffer(sceneLightBuffer, offset: 0, index: 3) // Use raw value 3 for BufferIndexLights
+        }
+
+        // Bind the light count as a separate buffer
+        renderEncoder.setFragmentBytes(&lightCount, length: MemoryLayout<Int32>.stride, index: 4) // Use raw value 4 for BufferIndexLightCount
+
         // Render each entity in the scene
         for entity in scene.entities {
             //print("Rendering entity: \(entity)") //debugging output
             // Ensure uniform buffer is set to the correct index expected by the vertex shader
             if let uniformBuffer = entity.uniformBuffer {
-                renderEncoder.setVertexBuffer(uniformBuffer, offset: 0, index: 2)
+                //renderEncoder.setVertexBuffer(uniformBuffer, offset: 0, index: 2)
+                //renderEncoder.setFragmentBuffer(uniformBuffer, offset: 0, index: 2)
+                renderEncoder.setVertexBuffer(uniformBuffer, offset: 0, index: 2) // Use raw value 2 for BufferIndexUniforms
                 renderEncoder.setFragmentBuffer(uniformBuffer, offset: 0, index: 2)
+
             }
 
             // Bind the vertex buffer
             if let vertexBuffer = entity.vertexBuffer {
+                // Use raw value 0 for BufferIndexMeshPositions
                 renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+                //renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: BufferIndexMeshPositions.rawValue)
             }
             
             // Bind material properties if present
@@ -156,6 +178,7 @@ class RenderSystem {
             }
 
             // Draw the entity
+            let vertexCount = entity.vertexCount
             //print("Drawing entity with vertex count: \(entity.vertexCount)") // for debugging
             renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: entity.vertexCount)
         }

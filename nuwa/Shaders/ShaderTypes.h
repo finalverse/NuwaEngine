@@ -21,11 +21,11 @@ typedef NSInteger EnumBackingType;
 #include <simd/simd.h>
 
 typedef NS_ENUM(EnumBackingType, BufferIndex) {
-    BufferIndexMeshPositions = 0,
+    BufferIndexMeshPositions = 0,       // Ensure vertex        uses index 0
     BufferIndexMeshGenerics  = 1,
-    BufferIndexUniforms      = 2,
-    BufferIndexLights        = 3,
-    BufferIndexLightCount    = 4
+    BufferIndexUniforms      = 2,       // Ensure uninforms     uses index 2
+    BufferIndexLights        = 3,       // Ensure lights        uses index 3
+    BufferIndexLightCount    = 4        // Ensure light count   uses index 4
 };
 
 typedef NS_ENUM(EnumBackingType, VertexAttribute) {
@@ -54,12 +54,15 @@ typedef struct {
 } Vertex;
 
 typedef struct {
-    int type;                   // 0 = ambient, 1 = directional, 2 = point
-    vector_float3 color;        // Light color
-    float intensity;            // Light intensity
-    vector_float3 position;     // Position for point lights
-    vector_float3 direction;    // Direction for directional lights
+    int type;                       //  4 bytes: 0 = ambient, 1 = directional, 2 = point
+    vector_float3 color;            // 12 bytes: Light color
+    float intensity;                //  4 bytes: Light intensity
+    vector_float3 position;         // 12 bytes: Position for point lights
+    float padding1;                 //  4 bytes: Padding for alignment
+    vector_float3 direction;        // 12 bytes: Direction for directional lights
+    float padding2;                 //  4 bytes: Padding for alignment to 16 bytes
 } SceneLight;
+
 
 // Material structure for holding material properties within the shader
 typedef struct {

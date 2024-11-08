@@ -4,49 +4,53 @@
 //
 //  Created by Wenyan Qin on 2024-11-05.
 //
-//  SceneLight represents different types of light sources in the scene, including ambient, directional, and point lights.
-//  Each light type has distinct properties for position, color, direction, and intensity.
+//  `SceneLight` represents light data in the scene, including types like ambient, directional, and point lights.
+//  Struct ensures alignment compatibility with Metal shaders for efficient GPU processing.
+//
 
 import simd
 
-enum LightType: Int {
+enum LightType: Int32 {
     case ambient = 0
     case directional = 1
     case point = 2
 }
 
-class SceneLight {
-    var type: LightType                  // Type of the light (ambient, directional, point)
-    var color: SIMD3<Float>              // Color of the light
-    var intensity: Float                 // Intensity of the light
-    var position: SIMD3<Float>           // Position for point lights
-    var direction: SIMD3<Float>          // Direction for directional lights
+/// `SceneLight` is a data structure compatible with Metal, holding light properties for rendering.
+struct SceneLight {
+    var type: Int32                   //  4 bytes for light type (0 = ambient, 1 = directional, 2 = point)
+    var color: SIMD3<Float>           // 12 bytes for light color (RGB)
+    var intensity: Float              //  4 bytes for light intensity
+    var position: SIMD3<Float>        // 12 bytes for the position in world space (for point lights)
+    var padding1: Float = 0.0         //  4 bytes padding to align to 48 bytes
+    var direction: SIMD3<Float>       // 12 bytes for directional light direction
+    var padding2: Float = 0.0         //  4 bytes padding to maintain 48-byte alignment
 
-    /// Initializes a SceneLight with the given properties.
+    /// Initializes a SceneLight with default or specified values.
     init(type: LightType,
          color: SIMD3<Float>,
          intensity: Float,
          position: SIMD3<Float> = SIMD3<Float>(0, 0, 0),
          direction: SIMD3<Float> = SIMD3<Float>(0, 0, -1)) {
-        self.type = type
+        self.type = type.rawValue
         self.color = color
         self.intensity = intensity
         self.position = position
-        self.direction = direction
+        self.direction = normalize(direction)
     }
 
-    /// Updates the light's position (useful for dynamic or moving lights)
-    func setPosition(_ newPosition: SIMD3<Float>) {
-        self.position = newPosition
+    /// Helper function to create an ambient light.
+    static func ambient(color: SIMD3<Float>, intensity: Float) -> SceneLight {
+        return SceneLight(type: .ambient, color: color, intensity: intensity)
     }
 
-    /// Updates the light's direction (useful for directional lights)
-    func setDirection(_ newDirection: SIMD3<Float>) {
-        self.direction = normalize(newDirection)
+    /// Helper function to create a directional light.
+    static func directional(color: SIMD3<Float>, intensity: Float, direction: SIMD3<Float>) -> SceneLight {
+        return SceneLight(type: .directional, color: color, intensity: intensity, direction: direction)
     }
 
-    /// Adjusts the intensity of the light
-    func setIntensity(_ newIntensity: Float) {
-        self.intensity = newIntensity
+    /// Helper function to create a point light.
+    static func point(color: SIMD3<Float>, intensity: Float, position: SIMD3<Float>) -> SceneLight {
+        return SceneLight(type: .point, color: color, intensity: intensity, position: position)
     }
 }
