@@ -26,12 +26,11 @@ struct VertexOut {
     float2 texCoord;
 };
 
+// Vertex function to be used in the render pipeline
 vertex VertexOut vertex_main(VertexIn in [[stage_in]],
                              constant Uniforms &uniforms [[buffer(BufferIndexUniforms)]]) {
     VertexOut out;
     float4 position = float4(in.position, 1.0);
-    
-    // Use viewProjectionMatrix and modelMatrix from Uniforms
     out.position = uniforms.viewProjectionMatrix * uniforms.modelMatrix * position;
     out.worldPosition = (uniforms.modelMatrix * position).xyz;
     out.normal = normalize((uniforms.modelMatrix * float4(in.normal, 0.0)).xyz);
@@ -40,24 +39,21 @@ vertex VertexOut vertex_main(VertexIn in [[stage_in]],
     return out;
 }
 
-/*
- fragment float4 fragment_main(VertexOut in [[stage_in]],
-     constant Uniforms &uniforms [[buffer(BufferIndexUniforms)]],
-     texture2d<half> colorMap [[texture(TextureIndexColor)]]) {
-         constexpr sampler textureSampler(mip_filter::linear, mag_filter::linear, min_filter::linear);
-         half4 colorSample = colorMap.sample(textureSampler, in.texCoord);
-         float3 sampledColor = float3(colorSample.rgb);  // Convert `half3` to `float3`
- 
-     return float4(sampledColor * in.color.rgb, 1.0);
- }
-*/
+// Fragment function for handling both lighting and material shading
+fragment float4 fragment_main(VertexOut in [[stage_in]],
+                              constant Uniforms &uniforms [[buffer(BufferIndexUniforms)]],
+                              texture2d<float> colorMap [[texture(TextureIndexColor)]]) {
+  //  constexpr sampler textureSampler(mip_filter::linear, mag_filter::linear, min_filter::linear);
+  //  float4 colorSample = colorMap.sample(textureSampler, in.texCoord);
+  //  return float4(colorSample.rgb * in.color.rgb, 1.0);
+    
+    // Define a basic lighting factor
+    float lightingFactor = 0.8;
 
-fragment float4 fragment_main(
-                    VertexOut in [[stage_in]],
-                    constant Uniforms &uniforms [[buffer(1)]],
-                    constant SceneLight *lights [[buffer(2)]],
-                    constant int &sceneLightCount [[buffer(3)]],
-                    texture2d<float> texture [[texture(0)]]) {
-    return float4(0.0, 1.0, 0.0, 1.0); // Bright red (1,0,0), green(0,1,0)
+    // Apply vertex color with a lighting factor, ignoring the texture for now
+    float3 color = in.color.rgb * lightingFactor;
+    
+    // Return final color, forcing alpha to 1.0
+    return float4(color, 1.0);
+    
 }
-

@@ -1,150 +1,191 @@
 //
 //  RenderSystem.swift
-//  nuwa
+//  NuwaEngine
 //
 //  Created by Wenyan Qin on 2024-11-05.
 //
-//  RenderSystem manages the Metal rendering pipeline, setting up shaders, buffers, and rendering entities in the scene.
-//  It handles lighting and materials, and efficiently manages buffers for optimized performance.
+//  RenderSystem manages the rendering pipeline using Metal and renders all entities in the scene.
+//  It also configures lighting, material, and future advanced effects such as deferred shading and shadow mapping.
+//
 
 import MetalKit
 
+/// RenderSystem is responsible for setting up the Metal rendering pipeline and rendering entities with proper shaders.
 class RenderSystem {
-    let device: MTLDevice
-    let commandQueue: MTLCommandQueue
-    var pipelineState: MTLRenderPipelineState?
-    var clearColor: MTLClearColor = MTLClearColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 1.0)
-    var camera: Camera?
-    var sceneLights: [SceneLight] = []
-    var sceneLightBuffer: MTLBuffer?
+    let device: MTLDevice                  // The Metal device
+    let commandQueue: MTLCommandQueue      // Command queue for issuing render commands
+    var pipelineState: MTLRenderPipelineState?  // Render pipeline state
+    var depthState: MTLDepthStencilState?       // Depth stencil state for depth testing
+    var clearColor: MTLClearColor = MTLClearColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0) // Clear color for rendering
+    var camera: Camera?                    // Camera for view and projection matrices
+    var sceneLights: [SceneLight] = []     // Collection of lights in the scene
+    var sceneLightBuffer: MTLBuffer?       // Buffer for storing light data
+    var shaderLibrary: MTLLibrary?         // Shader library containing all compiled Metal shaders
+    var depthTexture: MTLTexture?          // Depth texture for depth testing
 
-    init(device: MTLDevice) {
+    /// Initializes the RenderSystem with a device, prepares the pipeline, and sets up shader resources.
+    init(device: MTLDevice, viewSize: CGSize) {
         self.device = device
         self.commandQueue = device.makeCommandQueue()!
         setupPipeline()
+        setupDepthStencil()
+        updateDepthTexture(size: viewSize)  // Ensure depth texture is initialized with the correct view size
     }
 
-    /// Configures the Metal pipeline with vertex and fragment shaders, and prepares the vertex descriptor
+    /// Configures the Metal rendering pipeline, loading shaders and setting up the vertex descriptor.
     private func setupPipeline() {
-        guard let library = device.makeDefaultLibrary(),
-              let vertexFunction = library.makeFunction(name: "vertex_main"),
-              let fragmentFunction = library.makeFunction(name: "fragment_main") else {
-            print("Failed to create Metal shader functions.")
-            return
-        }
-
-        let vertexDescriptor = MTLVertexDescriptor()
-        
-        // Position attribute at index 0, using buffer index 0
-        vertexDescriptor.attributes[0].format = .float4
-        vertexDescriptor.attributes[0].offset = 0
-        vertexDescriptor.attributes[0].bufferIndex = 0
-        
-        // Color attribute at index 1, using buffer index 0
-        vertexDescriptor.attributes[1].format = .float4
-        vertexDescriptor.attributes[1].offset = MemoryLayout<SIMD4<Float>>.stride
-        vertexDescriptor.attributes[1].bufferIndex = 0
-        
-        // Normal attribute at index 2, using buffer index 0
-        vertexDescriptor.attributes[2].format = .float3
-        vertexDescriptor.attributes[2].offset = MemoryLayout<SIMD4<Float>>.stride * 2
-        vertexDescriptor.attributes[2].bufferIndex = 0
-        
-        // Texture coordinates attribute at index 3, using buffer index 0
-        vertexDescriptor.attributes[3].format = .float2
-        vertexDescriptor.attributes[3].offset = MemoryLayout<SIMD4<Float>>.stride * 2 + MemoryLayout<SIMD3<Float>>.stride
-        vertexDescriptor.attributes[3].bufferIndex = 0
-        
-        // Set stride for buffer index 0, which includes all vertex attributes
-        vertexDescriptor.layouts[0].stride = MemoryLayout<Vertex>.stride
-        vertexDescriptor.layouts[0].stepFunction = .perVertex
-
-        let pipelineDescriptor = MTLRenderPipelineDescriptor()
-        pipelineDescriptor.vertexFunction = vertexFunction
-        pipelineDescriptor.fragmentFunction = fragmentFunction
-        pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-        pipelineDescriptor.vertexDescriptor = vertexDescriptor
-
         do {
+            shaderLibrary = device.makeDefaultLibrary()
+            guard let library = shaderLibrary,
+                  let vertexFunction = library.makeFunction(name: "vertex_main"),
+                  let fragmentFunction = library.makeFunction(name: "fragment_main") else {
+                print("Failed to create Metal shader functions.")
+                return
+            }
+
+            let vertexDescriptor = MTLVertexDescriptor()
+            vertexDescriptor.attributes[0].format = .float4       // Position attribute
+            vertexDescriptor.attributes[1].format = .float4       // Color attribute
+            vertexDescriptor.attributes[2].format = .float3       // Normal attribute
+            vertexDescriptor.attributes[3].format = .float2       // Texture coordinates attribute
+            vertexDescriptor.layouts[0].stride = MemoryLayout<Vertex>.stride
+            vertexDescriptor.layouts[0].stepFunction = .perVertex
+
+            let pipelineDescriptor = MTLRenderPipelineDescriptor()
+            pipelineDescriptor.vertexFunction = vertexFunction
+            pipelineDescriptor.fragmentFunction = fragmentFunction
+            pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+            pipelineDescriptor.vertexDescriptor = vertexDescriptor
+            pipelineDescriptor.depthAttachmentPixelFormat = .depth32Float
+
             pipelineState = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
-            print("Pipeline state successfully created.")
+            //print("Pipeline state successfully created.")
+
         } catch {
             print("Failed to create pipeline state: \(error)")
         }
     }
 
-    /// Adds a new light to the scene and updates the light buffer
+    /// Sets up the depth stencil state for depth testing.
+    private func setupDepthStencil() {
+        let depthDescriptor = MTLDepthStencilDescriptor()
+        depthDescriptor.depthCompareFunction = .less
+        depthDescriptor.isDepthWriteEnabled = true
+        depthState = device.makeDepthStencilState(descriptor: depthDescriptor)
+    }
+
+    /// Updates the depth texture based on the view's drawable size.
+    func updateDepthTexture(size: CGSize) {
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .depth32Float,
+                                                                  width: Int(size.width),
+                                                                  height: Int(size.height),
+                                                                  mipmapped: false)
+        descriptor.usage = .renderTarget
+        descriptor.storageMode = .private
+        depthTexture = device.makeTexture(descriptor: descriptor)
+        
+        if depthTexture == nil {
+            print("Failed to create depth texture.")
+        } else {
+            //print("Depth texture successfully created.")
+        }
+    }
+
+    /// Adds a new light to the scene and updates the light buffer for rendering.
     func addSceneLight(_ sceneLight: SceneLight) {
         sceneLights.append(sceneLight)
         updateSceneLightBuffer()
     }
 
-    /// Updates the buffer for scene lights to store up to 3 lights
+    /// Updates the buffer for scene lights, storing up to 3 lights.
     private func updateSceneLightBuffer() {
-        let lightCount = min(sceneLights.count, 3) // Limit to 3 lights for simplicity
+        let lightCount = min(sceneLights.count, 3)  // Limit to 3 lights for simplicity
+        var limitedLights = Array(sceneLights.prefix(lightCount))
+        
         let sceneLightDataSize = MemoryLayout<SceneLight>.stride * lightCount
-        sceneLightBuffer = device.makeBuffer(bytes: sceneLights, length: sceneLightDataSize, options: [])
+        sceneLightBuffer = device.makeBuffer(bytes: &limitedLights, length: sceneLightDataSize, options: [])
     }
 
-    /// Updates each entity in the scene and applies transformations
+    /// Updates each entity in the scene with transformations, animations, and lighting.
     func update(scene: Scene, deltaTime: Float) {
         for entity in scene.entities {
             entity.update(deltaTime: deltaTime)
+            entity.updateUniforms(viewProjectionMatrix: camera?.viewProjectionMatrix ?? matrix_identity_float4x4,
+                                  cameraPosition: camera?.position ?? SIMD3<Float>(0, 0, 0))
         }
     }
 
-    /// Renders all entities in the scene with camera and lighting information
+    /// Renders all entities in the scene, handling lights, materials, and other properties.
+    /// Renders all entities in the scene, handling lights, materials, and other properties.
     func render(scene: Scene, drawable: CAMetalDrawable) {
         guard let pipelineState = pipelineState,
               let commandBuffer = commandQueue.makeCommandBuffer(),
+              let renderPassDescriptor = createRenderPassDescriptor(for: drawable),
+              let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor),
               let camera = camera else {
-            return
-        }
-
-        // Create and configure renderPassDescriptor
-        let renderPassDescriptor = MTLRenderPassDescriptor()
-        renderPassDescriptor.colorAttachments[0].texture = drawable.texture
-        renderPassDescriptor.colorAttachments[0].clearColor = clearColor
-        //renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColor(red: 0.2, green: 0.2, blue: 0.2, alpha: 1.0)
-        renderPassDescriptor.colorAttachments[0].loadAction = .clear
-        renderPassDescriptor.colorAttachments[0].storeAction = .store
-
-        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
+            print("Render setup incomplete: Missing pipeline, command buffer, or render pass descriptor.")
             return
         }
 
         renderEncoder.setRenderPipelineState(pipelineState)
-
-        // Compute the view-projection matrix
+        renderEncoder.setDepthStencilState(depthState)
+        
+        // Set light buffer and light count for the shaders
         let viewProjectionMatrix = camera.projectionMatrix() * camera.viewMatrix()
-        var lightCount = min(sceneLights.count, 3)
-
+        var lightCount = Int32(min(sceneLights.count, 3))
+        renderEncoder.setFragmentBuffer(sceneLightBuffer, offset: 0, index: 2)
+        renderEncoder.setFragmentBytes(&lightCount, length: MemoryLayout<Int32>.size, index: 3)
+        
+        // Render each entity in the scene
         for entity in scene.entities {
-            // Update uniforms with the latest transformations and camera data
-            entity.updateUniforms(viewProjectionMatrix: viewProjectionMatrix, cameraPosition: camera.position)
-
-            // Bind the entity's uniform buffer to the vertex and fragment shaders
+            //print("Rendering entity: \(entity)") //debugging output
+            // Ensure uniform buffer is set to the correct index expected by the vertex shader
             if let uniformBuffer = entity.uniformBuffer {
-                renderEncoder.setVertexBuffer(uniformBuffer, offset: 0, index: 1)
-                renderEncoder.setFragmentBuffer(uniformBuffer, offset: 0, index: 1)
+                renderEncoder.setVertexBuffer(uniformBuffer, offset: 0, index: 2)
+                renderEncoder.setFragmentBuffer(uniformBuffer, offset: 0, index: 2)
             }
 
-            // Bind the vertex buffer if it exists (e.g., for TriangleEntity)
+            // Bind the vertex buffer
             if let vertexBuffer = entity.vertexBuffer {
                 renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
             }
-
-            // Bind the sceneLightBuffer and lightCount to the fragment shader
-            renderEncoder.setFragmentBuffer(sceneLightBuffer, offset: 0, index: 2)
-            renderEncoder.setFragmentBytes(&lightCount, length: MemoryLayout<Int32>.size, index: 3)
+            
+            // Bind material properties if present
+            if let material = entity.material {
+                material.bindToShader(renderEncoder: renderEncoder)
+            }
 
             // Draw the entity
-            entity.draw(renderEncoder: renderEncoder)
+            //print("Drawing entity with vertex count: \(entity.vertexCount)") // for debugging
+            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: entity.vertexCount)
         }
-        
+
         renderEncoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
     }
 
+    /// Creates a render pass descriptor for the drawable, setting up color and depth attachments.
+    private func createRenderPassDescriptor(for drawable: CAMetalDrawable) -> MTLRenderPassDescriptor? {
+        guard let depthTexture = depthTexture else {
+            print("Warning: Depth texture is not set.")
+            return nil  // Early exit if depth texture isn't available
+        }
+        
+        let renderPassDescriptor = MTLRenderPassDescriptor()
+        
+        // Configure color attachment
+        renderPassDescriptor.colorAttachments[0].texture = drawable.texture
+        renderPassDescriptor.colorAttachments[0].clearColor = clearColor
+        renderPassDescriptor.colorAttachments[0].loadAction = .clear
+        renderPassDescriptor.colorAttachments[0].storeAction = .store
+        
+        // Configure depth attachment
+        renderPassDescriptor.depthAttachment.texture = depthTexture
+        renderPassDescriptor.depthAttachment.clearDepth = 1.0
+        renderPassDescriptor.depthAttachment.loadAction = .clear
+        renderPassDescriptor.depthAttachment.storeAction = .dontCare
+        
+        return renderPassDescriptor
+    }
 }

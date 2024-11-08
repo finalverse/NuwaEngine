@@ -23,7 +23,9 @@ typedef NSInteger EnumBackingType;
 typedef NS_ENUM(EnumBackingType, BufferIndex) {
     BufferIndexMeshPositions = 0,
     BufferIndexMeshGenerics  = 1,
-    BufferIndexUniforms      = 2
+    BufferIndexUniforms      = 2,
+    BufferIndexLights        = 3,
+    BufferIndexLightCount    = 4
 };
 
 typedef NS_ENUM(EnumBackingType, VertexAttribute) {
@@ -35,6 +37,12 @@ typedef NS_ENUM(EnumBackingType, VertexAttribute) {
 
 typedef NS_ENUM(EnumBackingType, TextureIndex) {
     TextureIndexColor    = 0
+};
+
+typedef NS_ENUM(EnumBackingType, LightType) {
+    LightTypeAmbient      = 0,
+    LightTypeDirectional  = 1,
+    LightTypePoint        = 2
 };
 
 // Structure representing a vertex with position, color, normal, and texture coordinates
@@ -66,6 +74,7 @@ typedef struct {
     matrix_float4x4 modelMatrix;          // Model transformation matrix
     matrix_float4x4 viewProjectionMatrix; // Combined view and projection matrix
     vector_float3 cameraPosition;         // Position of the camera in world space
+    float padding;                        // Padding for 16-byte alignment
     Material material;                    // Material properties for the entity
 } Uniforms;
 

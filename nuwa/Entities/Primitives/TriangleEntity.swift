@@ -37,6 +37,7 @@ class TriangleEntity: Entity {
     init(device: MTLDevice) {
         // Calculate the size of the uniform buffer based on the Uniforms struct
         let uniformSize = MemoryLayout<Uniforms>.size
+        //let uniformSize = MemoryLayout<Uniforms>.stride
         super.init(device: device, uniformSize: uniformSize)
         
         // Create the vertex buffer with the triangle's vertex data
@@ -45,7 +46,7 @@ class TriangleEntity: Entity {
     }
 
     /// Draws the triangle using the provided render encoder
-    /// - Parameter renderEncoder: The Metal render command encoder used to issue drawing commands
+    /// - Parameter renderEncoder: The Metal render command encoder used to issue drawing commands    
     override func draw(renderEncoder: MTLRenderCommandEncoder) {
         guard let vertexBuffer = vertexBuffer else {
             print("Warning: Vertex buffer is not set.")
@@ -59,15 +60,18 @@ class TriangleEntity: Entity {
         // Set the vertex buffer at index 0
         renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
         
-        // Bind the uniform buffer at index 2 as expected by vertex_main
-        renderEncoder.setVertexBuffer(uniformBuffer, offset: 0, index: 2)
+        // Bind the uniform buffer at index 1 or as specified in your shaders
+        //renderEncoder.setVertexBuffer(uniformBuffer, offset: 0, index: BufferIndex.uniforms.rawValue)
+        renderEncoder.setVertexBuffer(uniformBuffer, offset: 0, index: 1) // Assuming 1 is the correct index
         
-        // Set additional buffers like the material and light information
+        // Additional buffer binding as needed
+        renderEncoder.setFragmentBuffer(uniformBuffer, offset: 0, index: 1)
+        
+        // Bind the material properties
         if let material = material {
             material.bindToShader(renderEncoder: renderEncoder)
         }
 
-        // Calculate vertex count from buffer length
         let vertexCount = vertexBuffer.length / MemoryLayout<Vertex>.stride
         renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount)
     }

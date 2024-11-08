@@ -19,6 +19,12 @@ class Entity {
     var vertexBuffer: MTLBuffer?           // Buffer for storing vertex data
     var uniformBuffer: MTLBuffer?          // Buffer for storing uniform data
 
+    // Computed property for vertex count based on the vertex buffer length
+    var vertexCount: Int {
+        guard let vertexBuffer = vertexBuffer else { return 0 }
+        return vertexBuffer.length / MemoryLayout<Vertex>.stride
+    }
+    
     init(device: MTLDevice, uniformSize: Int) {
         self.node = SceneNode()
         self.device = device
@@ -40,6 +46,22 @@ class Entity {
         bufferPointer.pointee.modelMatrix = node.worldMatrix()
         bufferPointer.pointee.viewProjectionMatrix = viewProjectionMatrix
         bufferPointer.pointee.cameraPosition = cameraPosition
+    }
+    
+    /// Logs buffer information for debugging
+    func logBufferInfo() {
+        if let vertexBuffer = vertexBuffer {
+            print("Vertex buffer size: \(vertexBuffer.length) bytes")
+            print("Vertex count: \(vertexCount)")
+        } else {
+            print("No vertex buffer assigned.")
+        }
+        
+        if let uniformBuffer = uniformBuffer {
+            print("Uniform buffer size: \(uniformBuffer.length) bytes")
+        } else {
+            print("No uniform buffer assigned.")
+        }
     }
 
     /// Draw function to be called by RenderSystem

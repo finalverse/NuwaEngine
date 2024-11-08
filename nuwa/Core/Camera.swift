@@ -26,6 +26,11 @@ class Camera {
 
     var projectionType: ProjectionType = .perspective     // Projection type
 
+    /// Computed property to get the combined view-projection matrix
+    var viewProjectionMatrix: float4x4 {
+        return projectionMatrix() * viewMatrix()
+    }
+
     /// Calculates and returns the view matrix based on position and orientation
     func viewMatrix() -> float4x4 {
         return float4x4(eye: position, center: lookAtTarget, up: up)
