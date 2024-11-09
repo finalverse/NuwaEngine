@@ -31,7 +31,7 @@ class GameViewController: UIViewController {
         
         // Initialize and configure the camera
         camera = Camera()
-        camera.position = SIMD3<Float>(3, 3, 10)
+        camera.position = SIMD3<Float>(3, 5, 8)
         camera.lookAt(SIMD3<Float>(0, 0, 0))
         camera.aspectRatio = Float(metalView.drawableSize.width / metalView.drawableSize.height)
         renderSystem.camera = camera
@@ -43,7 +43,8 @@ class GameViewController: UIViewController {
         metalView.colorPixelFormat = .bgra8Unorm
         metalView.sampleCount = 1
         metalView.delegate = self
-        metalView.clearColor = MTLClearColorMake(0.2, 0.2, 0.2, 1.0)
+        //metalView.clearColor = MTLClearColorMake(0.2, 0.2, 0.2, 1.0)
+        metalView.clearColor = MTLClearColorMake(1.0, 1.0, 1.0, 1.0) // Set background color to white
         metalView.framebufferOnly = true
         
         self.view.addSubview(metalView)
@@ -81,6 +82,10 @@ class GameViewController: UIViewController {
             print("Error: Metal device is not available.")
             return
         }
+        
+        // Add a large sky plane as the background
+        let skyPlane = SkyPlaneEntity(device: metalView.device!)
+        scene.addEntity(skyPlane)
 
         // Add lights
         renderSystem.addSceneLight(SceneLight(type: .ambient, color: SIMD3<Float>(1, 1, 1), intensity: 0.2))

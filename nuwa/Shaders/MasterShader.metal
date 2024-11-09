@@ -82,6 +82,8 @@ vertex VertexOut vertex_main(VertexIn in [[stage_in]],
  */
 
 /*
+ 
+ // base line working sample #1
 fragment float4 fragment_main(VertexOut in [[stage_in]],
                               constant Uniforms &uniforms [[buffer(BufferIndexUniforms)]],
                               texture2d<float> colorMap [[texture(TextureIndexColor)]]) {
@@ -97,6 +99,8 @@ fragment float4 fragment_main(VertexOut in [[stage_in]],
 }
 */
 
+/*
+// base line working #2
 fragment float4 fragment_main(VertexOut in [[stage_in]],
                               constant Uniforms &uniforms [[buffer(BufferIndexUniforms)]],
                               constant SceneLight *lights [[buffer(BufferIndexLights)]],
@@ -131,6 +135,94 @@ fragment float4 fragment_main(VertexOut in [[stage_in]],
     }
 
     // Final color combines ambient, diffuse, and specular
+    float3 finalColor = ambient + diffuse + specular;
+    return float4(finalColor, 1.0);
+}
+*/
+
+/*
+ // working sample #3
+ fragment float4 fragment_main(VertexOut in [[stage_in]],
+ constant Uniforms &uniforms [[buffer(BufferIndexUniforms)]],
+ constant SceneLight *lights [[buffer(BufferIndexLights)]],
+ constant int &lightCount [[buffer(BufferIndexLightCount)]],
+ texture2d<float> colorMap [[texture(TextureIndexColor)]]) {
+ 
+ constexpr sampler textureSampler(mip_filter::linear, mag_filter::linear, min_filter::linear);
+ //float3 baseColor = colorMap.sample(textureSampler, in.texCoord).rgb * in.color.rgb;
+ float3 baseColor = in.color.rgb; // Ignore the texture for debugging
+ //float3 baseColor = float3(1.0, 0.0, 0.0); // Hard-coded red for debugging
+ 
+ // Ambient lighting
+ float ambientStrength = 0.1;
+ float3 ambient = ambientStrength * baseColor;
+ 
+ // Initialize diffuse and specular components
+ float3 diffuse = float3(0.0);
+ float3 specular = float3(0.0);
+ float shininess = uniforms.material.shininess;
+ 
+ for (int i = 0; i < lightCount; i++) {
+ if (lights[i].type == LightTypeDirectional) {
+ // Directional light calculations
+ float3 lightDir = normalize(lights[i].direction);
+ float diff = max(dot(in.normal, lightDir), 0.0);
+ diffuse += diff * lights[i].color * lights[i].intensity * baseColor;
+ 
+ // Specular highlights
+ float3 viewDir = normalize(uniforms.cameraPosition - in.worldPosition);
+ float3 reflectDir = reflect(-lightDir, in.normal);
+ float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
+ specular += spec * lights[i].color * lights[i].intensity;
+ }
+ }
+ 
+ // Combine all components
+ float3 finalColor = ambient + diffuse + specular;
+ return float4(finalColor, 1.0);
+ }
+ */
+
+fragment float4 fragment_main(VertexOut in [[stage_in]],
+                              constant Uniforms &uniforms [[buffer(BufferIndexUniforms)]],
+                              constant SceneLight *lights [[buffer(BufferIndexLights)]],
+                              constant int &lightCount [[buffer(BufferIndexLightCount)]],
+                              texture2d<float> colorMap [[texture(TextureIndexColor)]]) {
+    
+    constexpr sampler textureSampler(mip_filter::linear, mag_filter::linear, min_filter::linear);
+    
+    // Sample color from the texture map
+    float3 sampledColor = colorMap.sample(textureSampler, in.texCoord).rgb;
+    
+    // Combine texture color with vertex color for debugging purposes
+    //float3 baseColor = sampledColor * in.color.rgb;
+    float3 baseColor = in.color.rgb; // Ignore the texture for debugging
+
+    // Ambient lighting component
+    float ambientStrength = 0.1;
+    float3 ambient = ambientStrength * baseColor;
+
+    // Initialize diffuse and specular components
+    float3 diffuse = float3(0.0);
+    float3 specular = float3(0.0);
+    float shininess = uniforms.material.shininess;
+
+    for (int i = 0; i < lightCount; i++) {
+        if (lights[i].type == LightTypeDirectional) {
+            // Calculate diffuse lighting
+            float3 lightDir = normalize(lights[i].direction);
+            float diff = max(dot(in.normal, lightDir), 0.0);
+            diffuse += diff * lights[i].color * lights[i].intensity * baseColor;
+
+            // Calculate specular highlights
+            float3 viewDir = normalize(uniforms.cameraPosition - in.worldPosition);
+            float3 reflectDir = reflect(-lightDir, in.normal);
+            float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
+            specular += spec * lights[i].color * lights[i].intensity;
+        }
+    }
+
+    // Combine ambient, diffuse, and specular lighting
     float3 finalColor = ambient + diffuse + specular;
     return float4(finalColor, 1.0);
 }
