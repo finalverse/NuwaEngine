@@ -1,22 +1,9 @@
-//
-//  DeferredShader.metal
-//  NuwaEngine
-//
-//  Created by Wenyan Qin on 2024-11-09.
-//
-
 #include <metal_stdlib>
 #include <simd/simd.h>
-#import "ShaderTypes.h"
+//#import "ShaderTypes.h"
+#import "SharedShaders.metal"
 
 using namespace metal;
-
-struct VertexIn {
-    float3 position [[attribute(VertexAttributePosition)]];
-    float4 color [[attribute(VertexAttributeColor)]];
-    float3 normal [[attribute(VertexAttributeNormal)]];
-    float2 texCoord [[attribute(VertexAttributeTexcoord)]];
-};
 
 struct VertexOut {
     float4 position [[position]];

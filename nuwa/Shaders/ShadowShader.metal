@@ -1,31 +1,24 @@
-//
-//  ShadowShader.metal
-//  NuwaEngine
-//
-//  Created by Wenyan Qin on 2024-11-09.
-//
+// ShadowShader.metal
+// NuwaEngine
+// Created by Wenyan Qin on 2024-11-09.
 
 #include <metal_stdlib>
 #include <simd/simd.h>
-#import "ShaderTypes.h"
+//#import "ShaderTypes.h"
+#import "SharedShaders.metal"
 
 using namespace metal;
 
-struct VertexIn {
-    float3 position [[attribute(VertexAttributePosition)]];
-    float4 color [[attribute(VertexAttributeColor)]];
-    float3 normal [[attribute(VertexAttributeNormal)]];
-    float2 texCoord [[attribute(VertexAttributeTexcoord)]];
-};
-
+// Output structure for vertex shader
 struct VertexOut {
-    float4 position [[position]];
-    float4 color;
-    float3 worldPosition;
-    float3 normal;
-    float2 texCoord;
+    float4 position [[position]];     // Position for rasterization
+    float4 color;                     // Vertex color
+    float3 worldPosition;             // Position in world space for lighting
+    float3 normal;                    // Normal for lighting calculations
+    float2 texCoord;                  // Texture coordinates
 };
 
+// Vertex function for shadow rendering
 vertex VertexOut shadow_vertex(VertexIn in [[stage_in]],
                                constant Uniforms &uniforms [[buffer(BufferIndexUniforms)]]) {
     VertexOut out;
@@ -38,6 +31,7 @@ vertex VertexOut shadow_vertex(VertexIn in [[stage_in]],
     return out;
 }
 
+// Fragment function for shadow rendering
 fragment float4 shadow_fragment(VertexOut in [[stage_in]],
                                 constant Uniforms &uniforms [[buffer(BufferIndexUniforms)]]) {
     return float4(0.0, 0.0, 0.0, 1.0); // Shadow color (black)

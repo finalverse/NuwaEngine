@@ -2,9 +2,8 @@
 //  GameViewController.swift
 //  nuwa iOS
 //
-//  Created by Wenyan Qin on 2024-11-05.
+//  Handles Metal view setup, rendering, and updates for the NuwaEngine on iOS.
 //
-//  iOS-specific GameViewController for managing Metal view setup, rendering, and updates.
 
 import UIKit
 import MetalKit
@@ -14,8 +13,8 @@ class GameViewController: UIViewController {
     var renderSystem: RenderSystem!
     var scene: Scene!
     var camera: Camera!
-    var cameraAngle: Float = 0.0  // Starting angle for the camera rotation
-    var cameraTimer: Timer?       // Timer to handle camera updates
+    var cameraAngle: Float = 0.0
+    var cameraTimer: Timer?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -26,94 +25,89 @@ class GameViewController: UIViewController {
             fatalError("Metal is not supported on this device")
         }
 
-        renderSystem = RenderSystem(device: device, viewSize: metalView.drawableSize)
-        scene = Scene()
+        // Initialize render system and scene
+        let shaderManager = ShaderManager(device: device)
+        renderSystem = RenderSystem(device: device, viewSize: metalView.drawableSize, shaderManager: shaderManager)
+        scene = Scene(device: device)
         
-        // Initialize and configure the camera
+        // Set up camera
         camera = Camera()
         camera.position = SIMD3<Float>(3, 5, 8)
         camera.lookAt(SIMD3<Float>(0, 0, 0))
         camera.aspectRatio = Float(metalView.drawableSize.width / metalView.drawableSize.height)
         renderSystem.camera = camera
 
-        addLightsAndEntities()
+        // Add lights and entities
+        addLightsAndEntities(device: device, shaderManager: shaderManager)
 
-        // Configure the Metal view for rendering
+        // Configure the Metal view
         metalView.depthStencilPixelFormat = .depth32Float
         metalView.colorPixelFormat = .bgra8Unorm
         metalView.sampleCount = 1
         metalView.delegate = self
-        //metalView.clearColor = MTLClearColorMake(0.2, 0.2, 0.2, 1.0)
-        metalView.clearColor = MTLClearColorMake(1.0, 1.0, 1.0, 1.0) // Set background color to white
+        metalView.clearColor = MTLClearColorMake(1.0, 1.0, 1.0, 1.0)  // Set background color to white
         metalView.framebufferOnly = true
-        
+        metalView.drawableSize = self.view.bounds.size
         self.view.addSubview(metalView)
         
-        // Start the camera animation timer for a 360-degree orbit
+        // Start the camera animation
         startCameraAnimation()
+ 
     }
     
-    /// Starts a timer to rotate the camera around the origin, giving a 360-degree view.
+    /// Starts a timer to animate the camera in a circular path around the origin.
     func startCameraAnimation() {
         cameraTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
-            
-            // Increment the camera angle
             self.cameraAngle += 0.01
-            if self.cameraAngle >= 2 * .pi {  // Reset angle after a full rotation
-                self.cameraAngle = 0
-            }
-            
-            // Calculate new camera position on a circular path
+            if self.cameraAngle >= 2 * .pi { self.cameraAngle = 0 }
             let radius: Float = 10.0
             let x = radius * cos(self.cameraAngle)
             let z = radius * sin(self.cameraAngle)
-            
-            // Update camera position and look-at target
-            self.camera.position = SIMD3<Float>(x, 2.0, z) // Keep a slight height for better view
-            self.camera.lookAt(SIMD3<Float>(0, 0, 0))       // Always look at the origin
-            
+            self.camera.position = SIMD3<Float>(x, 2.0, z)
+            self.camera.lookAt(SIMD3<Float>(0, 0, 0))
             self.renderSystem.camera = self.camera
         }
     }
 
-    private func addLightsAndEntities() {
-        guard let device = metalView.device else {
-            print("Error: Metal device is not available.")
-            return
-        }
+    /// Adds lights and entities to the scene, initializing the lighting manager with appropriate settings.
+    /// - Parameters:
+    ///   - device: The Metal device used for buffer creation.
+    ///   - shaderManager: The shader manager responsible for handling shaders.
+    private func addLightsAndEntities(device: MTLDevice, shaderManager: ShaderManager) {
+        // Initialize the lighting manager
+        let lightingManager = LightingManager(device: device)
         
-        // Add a large sky plane as the background
-        let skyPlane = SkyPlaneEntity(device: metalView.device!)
-        scene.addEntity(skyPlane)
-
-        // Add lights
-        renderSystem.addSceneLight(SceneLight(type: .ambient, color: SIMD3<Float>(1, 1, 1), intensity: 0.2))
-        renderSystem.addSceneLight(SceneLight(type: .directional, color: SIMD3<Float>(1, 1, 1), intensity: 0.8, direction: SIMD3(1, -1, 0)))
-
-        // Add grid and axis entities
-        let gridEntity = GridEntity(device: device, gridSize: 10.0, gridSpacing: 0.5)
-        scene.addEntity(gridEntity)
+        // Define light properties and add them to the lighting manager
+        let ambientLight = LightData(type: .ambient, color: SIMD3<Float>(1, 1, 1), intensity: 0.2, position: SIMD3<Float>(0, 0, 0), direction: SIMD3<Float>(0, -1, 0))
+        let directionalLight = LightData(type: .directional, color: SIMD3<Float>(1, 1, 1), intensity: 0.8, position: SIMD3<Float>(0, 0, 0), direction: SIMD3<Float>(1, -1, 0))
         
-        let axisEntity = AxisEntity(device: device, axisLength: 2.0)
-        scene.addEntity(axisEntity)
+        lightingManager.addLight(ambientLight)
+        lightingManager.addLight(directionalLight)
+        
+        renderSystem.lightingManager = lightingManager
 
-        // Add a test entity (triangle)
-        let triangle = TriangleEntity(device: device)
-        triangle.node.position = SIMD3<Float>(0.0, 0.0, 0.0)
-        scene.addEntity(triangle)
+        // Pass the lighting manager to the scene
+        scene.lightingManager = lightingManager
+
+        // Add entities to the scene with lighting manager support
+        //scene.addEntity(SkyPlaneEntity(device: device, shaderManager: shaderManager, lightingManager: lightingManager))
+        //scene.addEntity(GridEntity(device: device, shaderManager: shaderManager, lightingManager: lightingManager, gridSize: 10.0, gridSpacing: 0.5))
+        scene.addEntity(AxisEntity(device: device, shaderManager: shaderManager, lightingManager: lightingManager, axisLength: 2.0))
+        scene.addEntity(TriangleEntity(device: device, shaderManager: shaderManager, lightingManager: lightingManager))
     }
 }
 
 extension GameViewController: MTKViewDelegate {
+    /// Updates the view size for rendering when the drawable size changes.
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        renderSystem.updateDepthTexture(size: size)
+        renderSystem.updateViewSize(size: size)
         renderSystem.camera?.aspectRatio = Float(size.width / size.height)
     }
 
+    /// Renders the scene in the Metal view.
     func draw(in view: MTKView) {
         guard let drawable = view.currentDrawable else { return }
-        
         let deltaTime: Float = 1.0 / Float(view.preferredFramesPerSecond)
         renderSystem.update(scene: scene, deltaTime: deltaTime)
         renderSystem.render(scene: scene, drawable: drawable)

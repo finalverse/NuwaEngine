@@ -1,78 +1,64 @@
 //
 //  TriangleEntity.swift
-//  nuwa
+//  NuwaEngine
 //
-//  Created by Wenyan Qin on 2024-11-05.
+//  This file defines the `TriangleEntity` class, representing a simple 2D triangle with a material.
+//  It is useful for basic testing and rendering demonstrations.
 //
-//  TriangleEntity represents a simple triangle with position, color, and optional material properties.
-//  It serves as a basic test entity for rendering and transformations.
+//  Created by Wenyan Qin on 2024-11-08.
+//
 
 import Metal
 import simd
 
-/// TriangleEntity represents a simple 2D triangle with vertex color, normal, and texture coordinates
-/// that is rendered on the screen using Metal.
+/// Represents a simple 2D triangle entity with a material.
 class TriangleEntity: Entity {
-    /// The vertex buffer that holds the vertex data for the triangle
-    //var vertexBuffer: MTLBuffer?
-
-    /// Vertices for the triangle, each with position, color, normal, and texture coordinates
     private let vertices: [Vertex] = [
-        Vertex(position: SIMD4<Float>(arrayLiteral: 0.0,  0.5, 0.0, 1.0),
-               color:    SIMD4<Float>(1.0, 0.0, 0.0, 1.0),
-               normal:   SIMD3<Float>(0, 0, 1),
-               texCoord: SIMD2<Float>(0.5, 1.0)),                           // Top vertex
-        Vertex(position: SIMD4<Float>(arrayLiteral: -0.5, -0.5, 0.0, 1.0),
-               color:    SIMD4<Float>(0.0, 1.0, 0.0, 1.0),
-               normal:   SIMD3<Float>(0, 0, 1),
-               texCoord: SIMD2<Float>(0.0, 0.0)),                           // Bottom-left vertex
-        Vertex(position: SIMD4<Float>(arrayLiteral: 0.5, -0.5, 0.0, 1.0),
-               color:    SIMD4<Float>(0.0, 0.0, 1.0, 1.0),
-               normal:   SIMD3<Float>(0, 0, 1),
-               texCoord: SIMD2<Float>(1.0, 0.0))                            // Bottom-right vertex
+        Vertex(position: SIMD4<Float>(0.0, 0.5, 0.0, 1.0), color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0), normal: SIMD3<Float>(0, 0, 1), texCoord: SIMD2<Float>(0.5, 1.0)),
+        Vertex(position: SIMD4<Float>(-0.5, -0.5, 0.0, 1.0), color: SIMD4<Float>(0.0, 1.0, 0.0, 1.0), normal: SIMD3<Float>(0, 0, 1), texCoord: SIMD2<Float>(0.0, 0.0)),
+        Vertex(position: SIMD4<Float>(0.5, -0.5, 0.0, 1.0), color: SIMD4<Float>(0.0, 0.0, 1.0, 1.0), normal: SIMD3<Float>(0, 0, 1), texCoord: SIMD2<Float>(1.0, 0.0))
     ]
 
-    /// Initializes the triangle entity, setting up the vertex buffer and uniform buffer
-    /// - Parameter device: The Metal device used to create buffers
-    init(device: MTLDevice) {
-        // Calculate the size of the uniform buffer based on the Uniforms struct
-        let uniformSize = MemoryLayout<Uniforms>.size
-        //let uniformSize = MemoryLayout<Uniforms>.stride
-        super.init(device: device, uniformSize: uniformSize)
+    /// Initializes the triangle entity with device and shader manager.
+    /// - Parameters:
+    ///   - device: The Metal device used for buffer creation.
+    ///   - shaderManager: The shader manager to manage shaders for the triangle entity.
+    override init(device: MTLDevice, shaderManager: ShaderManager, lightingManager: LightingManager) {
+        super.init(device: device, shaderManager: shaderManager, lightingManager: LightingManager(device: device))
         
-        // Create the vertex buffer with the triangle's vertex data
+        // Setup the vertex buffer with triangle vertices
         let dataSize = vertices.count * MemoryLayout<Vertex>.stride
         vertexBuffer = device.makeBuffer(bytes: vertices, length: dataSize, options: [])
+        
+        // Assign a basic material to the triangle
+        material = Material(
+            diffuseColor: SIMD3<Float>(1.0, 0.5, 0.5),
+            specularColor: SIMD3<Float>(1.0, 1.0, 1.0),
+            shininess: 32.0,
+            hasTexture: false,
+            device: device
+        )
     }
 
-    /// Draws the triangle using the provided render encoder
-    /// - Parameter renderEncoder: The Metal render command encoder used to issue drawing commands    
+    /// Draw function to render the triangle.
     override func draw(renderEncoder: MTLRenderCommandEncoder) {
-        guard let vertexBuffer = vertexBuffer else {
-            print("Warning: Vertex buffer is not set.")
+        guard let vertexBuffer = vertexBuffer, let uniformBuffer = uniformBuffer else {
+            print("Warning: Missing vertex or uniform buffer.")
             return
         }
-        guard let uniformBuffer = uniformBuffer else {
-            print("Warning: Uniform buffer is not set.")
+        
+        // Retrieve pipeline state from shaderManager
+        guard let pipelineState = shaderManager.getPipelineState(vertexShaderName: "vertex_main", fragmentShaderName: "fragment_main") else {
+            print("Error: Could not retrieve pipeline state.")
             return
         }
-
-        // Set the vertex buffer at index 0
+        
+        renderEncoder.setRenderPipelineState(pipelineState)
         renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-        
-        // Bind the uniform buffer at index 1 or as specified in your shaders
-        //renderEncoder.setVertexBuffer(uniformBuffer, offset: 0, index: BufferIndex.uniforms.rawValue)
-        renderEncoder.setVertexBuffer(uniformBuffer, offset: 0, index: 1) // Assuming 1 is the correct index
-        
-        // Additional buffer binding as needed
+        renderEncoder.setVertexBuffer(uniformBuffer, offset: 0, index: 1)
         renderEncoder.setFragmentBuffer(uniformBuffer, offset: 0, index: 1)
         
-        // Bind the material properties
-        if let material = material {
-            material.bindToShader(renderEncoder: renderEncoder)
-        }
-
-        let vertexCount = vertexBuffer.length / MemoryLayout<Vertex>.stride
-        renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount)
+        material?.bindToShader(renderEncoder: renderEncoder)
+        renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
     }
 }

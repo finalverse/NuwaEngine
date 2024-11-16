@@ -7,28 +7,36 @@
 //  Scene manages all entities in the scene, including lights and global settings like ambient lighting.
 //  It provides functions to add, remove, and update entities.
 
+// Scene.swift
+// Manages all entities, including global settings like ambient lighting
+
 import Foundation
+import simd
+import Metal
 
 class Scene {
-    var entities: [Entity] = []                // List of all entities in the scene
-    var ambientLightColor: SIMD3<Float> = SIMD3<Float>(0.1, 0.1, 0.1) // Global ambient light color
+    var entities: [Entity] = []
+    var ambientLightColor: SIMD3<Float> = SIMD3<Float>(0.1, 0.1, 0.1)
+    var lightingManager: LightingManager?  // Updated from LightingShader to LightingManager
 
-    init() {}
+    init(device: MTLDevice) {
+        lightingManager = LightingManager(device: device)
+    }
 
-    /// Adds a new entity to the scene
     func addEntity(_ entity: Entity) {
         entities.append(entity)
     }
 
-    /// Removes an entity from the scene if it exists
     func removeEntity(_ entity: Entity) {
         entities.removeAll { $0 === entity }
     }
 
-    /// Updates all entities in the scene by applying transformations, animations, etc.
-    func update(deltaTime: Float) {
+    func update(deltaTime: Float, device: MTLDevice) {
         for entity in entities {
-            entity.update(deltaTime: deltaTime)
+            entity.updateUniforms(viewProjectionMatrix: matrix_identity_float4x4, cameraPosition: SIMD3<Float>(0, 0, 0))
         }
+        
+        // Update lighting buffer if lightingManager is present
+        lightingManager?.updateLightBuffer()
     }
 }

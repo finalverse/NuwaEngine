@@ -23,7 +23,7 @@ protocol Behavior {
     func update(for entity: Entity, deltaTime: Float)
 }
 
-/// WanderBehavior for entities to move within random bounds
+/// WanderBehavior for entities to move within random bounds.
 class WanderBehavior: Behavior {
     var type: BehaviorType
     private var wanderDirection: SIMD3<Float>
@@ -35,11 +35,15 @@ class WanderBehavior: Behavior {
         self.wanderDirection = SIMD3<Float>(0.5, 0, 0.5)
     }
 
+    /// Updates the entity’s position within the given bounds.
+    /// - Parameters:
+    ///   - entity: The entity to apply the wander behavior.
+    ///   - deltaTime: The time elapsed since the last update.
     func update(for entity: Entity, deltaTime: Float) {
-        entity.node.position += wanderDirection * deltaTime
-        
+        entity.position += wanderDirection * deltaTime
+
         // Reverse direction if out of bounds
-        if abs(entity.node.position.x) > bounds.x || abs(entity.node.position.z) > bounds.z {
+        if abs(entity.position.x) > bounds.x || abs(entity.position.z) > bounds.z {
             wanderDirection = -wanderDirection
         }
     }

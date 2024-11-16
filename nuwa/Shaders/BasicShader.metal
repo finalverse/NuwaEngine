@@ -1,22 +1,9 @@
-//
-//  BasicShader.metal
-//  NuwaEngine
-//
-//  Created by Wenyan Qin on 2024-11-09.
-//
-
 #include <metal_stdlib>
 #include <simd/simd.h>
-#import "ShaderTypes.h"
+//#import "ShaderTypes.h"
+#import "SharedShaders.metal"
 
 using namespace metal;
-
-struct VertexIn {
-    float3 position [[attribute(VertexAttributePosition)]];
-    float4 color [[attribute(VertexAttributeColor)]];
-    float3 normal [[attribute(VertexAttributeNormal)]];
-    float2 texCoord [[attribute(VertexAttributeTexcoord)]];
-};
 
 struct VertexOut {
     float4 position [[position]];
@@ -26,12 +13,10 @@ struct VertexOut {
     float2 texCoord;
 };
 
-// Vertex function for simple transformations
-vertex VertexOut basic_vertex(VertexIn in [[stage_in]],
-                              constant Uniforms &uniforms [[buffer(BufferIndexUniforms)]]) {
+vertex VertexOut vertex_main(VertexIn in [[stage_in]],
+                             constant Uniforms &uniforms [[buffer(BufferIndexUniforms)]]) {
     VertexOut out;
     float4 position = float4(in.position, 1.0);
-    
     out.position = uniforms.viewProjectionMatrix * uniforms.modelMatrix * position;
     out.worldPosition = (uniforms.modelMatrix * position).xyz;
     out.normal = normalize((uniforms.modelMatrix * float4(in.normal, 0.0)).xyz);
@@ -40,3 +25,12 @@ vertex VertexOut basic_vertex(VertexIn in [[stage_in]],
     return out;
 }
 
+fragment float4 fragment_main(VertexOut in [[stage_in]],
+                              constant Uniforms &uniforms [[buffer(BufferIndexUniforms)]],
+                              texture2d<float> colorMap [[texture(TextureIndexColor)]]) {
+    constexpr sampler textureSampler(mip_filter::linear, mag_filter::linear, min_filter::linear);
+    float3 baseColor = colorMap.sample(textureSampler, in.texCoord).rgb * in.color.rgb;
+    float ambientStrength = 0.1;
+    float3 ambient = ambientStrength * baseColor;
+    return float4(ambient, 1.0);
+}

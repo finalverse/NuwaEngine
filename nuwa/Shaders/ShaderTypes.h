@@ -1,84 +1,88 @@
 //
 //  ShaderTypes.h
-//  nuwa
+//  NuwaEngine
+//
+//  This file defines shared data structures and enums for Swift and Metal shaders.
+//  Ensures efficient GPU processing by maintaining alignment compatibility between Metal shaders and Swift code.
 //
 //  Created by Wenyan Qin on 2024-11-05.
 //
-//  ShaderTypes defines shared data structures between Swift and Metal shaders.
-//  Structures for vertices, lights, materials, and uniforms are mirrored here to ensure compatibility.
 
 #ifndef ShaderTypes_h
 #define ShaderTypes_h
 
-#ifdef __METAL_VERSION__
-#define NS_ENUM(_type, _name) enum _name : _type _name; enum _name : _type
-typedef metal::int32_t EnumBackingType;
-#else
-#import <Foundation/Foundation.h>
-typedef NSInteger EnumBackingType;
-#endif
-
 #include <simd/simd.h>
 
-typedef NS_ENUM(EnumBackingType, BufferIndex) {
-    BufferIndexMeshPositions = 0,       // Ensure vertex        uses index 0
-    BufferIndexMeshGenerics  = 1,
-    BufferIndexUniforms      = 2,       // Ensure uninforms     uses index 2
-    BufferIndexLights        = 3,       // Ensure lights        uses index 3
-    BufferIndexLightCount    = 4        // Ensure light count   uses index 4
+/// Buffer indices used in Metal shaders to access various data buffers
+enum BufferIndex : int {
+    BufferIndexMeshPositions = 0,   // Vertex buffer containing mesh positions
+    BufferIndexUniforms      = 2,   // Buffer for transformation matrices and material data
+    BufferIndexLights        = 3,   // Buffer storing light information for scene lighting
+    BufferIndexLightCount    = 4    // Buffer storing the count of lights in the scene
 };
 
-typedef NS_ENUM(EnumBackingType, VertexAttribute) {
-    VertexAttributePosition  = 0,
-    VertexAttributeColor     = 1,
-    VertexAttributeNormal    = 2,
-    VertexAttributeTexcoord  = 3
+/// Vertex attributes specify the layout of vertex data in shaders
+enum VertexAttribute : int {
+    VertexAttributePosition  = 0,   // Position of the vertex in 3D space
+    VertexAttributeColor     = 1,   // Vertex color for per-vertex color effects
+    VertexAttributeNormal    = 2,   // Normal vector for lighting calculations
+    VertexAttributeTexcoord  = 3    // Texture coordinates for UV mapping
 };
 
-typedef NS_ENUM(EnumBackingType, TextureIndex) {
-    TextureIndexColor    = 0
+/// Texture indices for binding textures in Metal shaders
+enum TextureIndex : int {
+    TextureIndexColor = 0           // Color texture for basic surface rendering
 };
 
-typedef NS_ENUM(EnumBackingType, LightType) {
-    LightTypeAmbient      = 0,
-    LightTypeDirectional  = 1,
-    LightTypePoint        = 2
+/// Enum defining types of lights used in the scene
+enum LightType : int {
+    LightTypeAmbient     = 0,       // Ambient light illuminates all objects equally
+    LightTypeDirectional = 1,       // Directional light simulates distant light sources like the sun
+    LightTypePoint       = 2        // Point light simulates localized sources like light bulbs
 };
 
-// Structure representing a vertex with position, color, normal, and texture coordinates
-typedef struct {
-    vector_float4 position;      // Vertex position in 3D space, using homogeneous coordinates
-    vector_float4 color;         // Vertex color
-    vector_float3 normal;        // Normal vector for lighting calculations
-    vector_float2 texCoord;      // Texture coordinates for sampling
-} Vertex;
+/// Structure representing light data, compatible with both Swift and Metal
+struct LightData {
+    int type;                        // Type of light (ambient, directional, or point)
+    vector_float3 color;             // RGB color of the light
+    float intensity;                 // Intensity multiplier for the light
+    vector_float3 position;          // Position for point lights
+    float padding1;                  // Padding for 16-byte alignment
+    vector_float3 direction;         // Direction vector for directional lights
+    float padding2;                  // Padding for 16-byte alignment
+};
 
-typedef struct {
-    int type;                       //  4 bytes: 0 = ambient, 1 = directional, 2 = point
-    vector_float3 color;            // 12 bytes: Light color
-    float intensity;                //  4 bytes: Light intensity
-    vector_float3 position;         // 12 bytes: Position for point lights
-    float padding1;                 //  4 bytes: Padding for alignment
-    vector_float3 direction;        // 12 bytes: Direction for directional lights
-    float padding2;                 //  4 bytes: Padding for alignment to 16 bytes
-} SceneLight;
+/// Vertex structure for compatibility between Swift and Metal, containing essential vertex attributes
+struct Vertex {
+    vector_float4 position;          // Homogeneous 3D position of the vertex
+    vector_float4 color;             // RGBA color of the vertex
+    vector_float3 normal;            // Normal vector for lighting calculations
+    vector_float2 texCoord;          // Texture coordinates for UV mapping
+};
 
+/// Vertex input structure specifically for Metal shaders, with attribute bindings for efficient processing
+struct VertexIn {
+    vector_float3 position [[attribute(VertexAttributePosition)]];  // Vertex position
+    vector_float4 color [[attribute(VertexAttributeColor)]];        // Vertex color
+    vector_float3 normal [[attribute(VertexAttributeNormal)]];      // Normal for lighting
+    vector_float2 texCoord [[attribute(VertexAttributeTexcoord)]];  // Texture coordinates
+};
 
-// Material structure for holding material properties within the shader
-typedef struct {
-    vector_float3 diffuseColor;
-    vector_float3 specularColor;
-    float shininess;
-    uint8_t hasTexture; // Indicate if a texture is present
-} Material;
+/// Material properties structure for shaders, containing basic material characteristics
+struct Material {
+    vector_float3 diffuseColor;      // Base color of the material
+    vector_float3 specularColor;     // Specular highlight color
+    float shininess;                 // Shininess factor for specular reflections
+    int hasTexture;                  // Flag indicating if a texture is applied (1 = true, 0 = false)
+};
 
-// Uniforms structure for passing transformation and lighting data to shaders
-typedef struct {
-    matrix_float4x4 modelMatrix;          // Model transformation matrix
-    matrix_float4x4 viewProjectionMatrix; // Combined view and projection matrix
-    vector_float3 cameraPosition;         // Position of the camera in world space
-    float padding;                        // Padding for 16-byte alignment
-    Material material;                    // Material properties for the entity
-} Uniforms;
+/// Uniform structure containing transformation matrices, camera data, and material properties for each entity
+struct Uniforms {
+    matrix_float4x4 modelMatrix;         // Local-to-world transformation matrix
+    matrix_float4x4 viewProjectionMatrix; // Combined view-projection matrix
+    vector_float3 cameraPosition;        // Camera position in world space for lighting calculations
+    float padding;                       // Padding for alignment
+    struct Material material;            // Material properties for rendering the entity
+};
 
 #endif /* ShaderTypes_h */

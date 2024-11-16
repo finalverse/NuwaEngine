@@ -2,21 +2,35 @@
 //  GridEntity.swift
 //  NuwaEngine
 //
+//  Represents a ground plane grid with distinct colors for the X and Z axes, serving as a visual guide for the scene's coordinate space.
+//
 //  Updated by ChatGPT on 2024-11-08.
 //
 
 import Foundation
 import MetalKit
 
-/// `GridEntity` represents a ground plane grid with distinct colors for X and Z axes.
+/// `GridEntity` represents a ground plane grid with distinct colors for X and Z axes, and gray for other grid lines.
 class GridEntity: Entity {
-    private var gridVertices: [Vertex] = []
-    
-    init(device: MTLDevice, gridSize: Float, gridSpacing: Float) {
-        super.init(device: device, uniformSize: MemoryLayout<Uniforms>.stride)
+    private var gridVertices: [Vertex] = []    // Array to store grid vertices
+
+    /// Initializes a `GridEntity` with specified grid size, spacing, device, shader manager, and lighting manager.
+    /// - Parameters:
+    ///   - device: The Metal device used for buffer creation.
+    ///   - shaderManager: The shader manager for handling shaders.
+    ///   - lightingManager: The lighting manager for managing lighting effects in the scene.
+    ///   - gridSize: Total size of the grid (e.g., 10 for a 10x10 grid).
+    ///   - gridSpacing: Distance between each line in the grid.
+    init(device: MTLDevice, shaderManager: ShaderManager, lightingManager: LightingManager, gridSize: Float, gridSpacing: Float) {
+        super.init(device: device, shaderManager: shaderManager, lightingManager: lightingManager)
         
         // Generate grid vertices and assign them to the buffer
         gridVertices = GridEntity.generateGridVertices(gridSize: gridSize, gridSpacing: gridSpacing)
+        setupVertexBuffer()
+    }
+
+    /// Sets up the vertex buffer for the grid using the generated vertices.
+    private func setupVertexBuffer() {
         let dataSize = gridVertices.count * MemoryLayout<Vertex>.stride
         vertexBuffer = device.makeBuffer(bytes: gridVertices, length: dataSize, options: [])
     }
@@ -57,13 +71,20 @@ class GridEntity: Entity {
         return vertices
     }
 
-    /// Draw function to render the grid
+    /// Draw function to render the grid.
+    /// - Parameter renderEncoder: The Metal render command encoder used for issuing rendering commands.
     override func draw(renderEncoder: MTLRenderCommandEncoder) {
-        guard let vertexBuffer = vertexBuffer, let uniformBuffer = uniformBuffer else {
-            print("Warning: Missing vertex or uniform buffer.")
+        // Ensure all necessary resources are available
+        guard let vertexBuffer = vertexBuffer,
+              let uniformBuffer = uniformBuffer,
+              let pipelineState = shaderManager.getPipelineState(vertexShaderName: "vertex_main", fragmentShaderName: "fragment_main") else {
+            print("Warning: Missing vertex buffer, uniform buffer, or pipeline state.")
             return
         }
         
+        // Set the pipeline state for rendering
+        renderEncoder.setRenderPipelineState(pipelineState)
+
         // Bind the vertex buffer at index 0
         renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
         
