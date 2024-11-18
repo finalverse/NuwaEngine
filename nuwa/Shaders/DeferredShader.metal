@@ -1,31 +1,31 @@
-#include <metal_stdlib>
-#include <simd/simd.h>
-//#import "ShaderTypes.h"
-#import "SharedShaders.metal"
+//
+//  DeferredShader.metal
+//  NuwaEngine
+//
+//  Implements deferred rendering by separating geometry and lighting calculations.
+//
+//  Updated to align with ShaderTypes.h.
+//  Created by Wenyan Qin on 2024-11-12.
+//
 
+#include <metal_stdlib>
+#import "SharedShaders.metal"
 using namespace metal;
 
-struct VertexOut {
-    float4 position [[position]];
-    float4 color;
-    float3 worldPosition;
-    float3 normal;
-    float2 texCoord;
-};
-
+// Vertex Shader: Outputs world-space geometry for lighting calculations.
 vertex VertexOut deferred_vertex(VertexIn in [[stage_in]],
                                  constant Uniforms &uniforms [[buffer(BufferIndexUniforms)]]) {
     VertexOut out;
-    float4 position = float4(in.position, 1.0);
-    out.position = uniforms.viewProjectionMatrix * uniforms.modelMatrix * position;
-    out.worldPosition = (uniforms.modelMatrix * position).xyz;
-    out.normal = normalize((uniforms.modelMatrix * float4(in.normal, 0.0)).xyz);
-    out.color = in.color;
+    float4 worldPosition = uniforms.modelMatrix * float4(in.position, 1.0);
+    out.worldPosition = worldPosition.xyz;
+    out.worldNormal = normalize((uniforms.modelMatrix * float4(in.normal, 0.0)).xyz);
+    out.position = uniforms.viewProjectionMatrix * worldPosition;
     out.texCoord = in.texCoord;
     return out;
 }
 
+// Fragment Shader: Passes interpolated attributes for later lighting passes.
 fragment float4 deferred_fragment(VertexOut in [[stage_in]],
                                   constant Uniforms &uniforms [[buffer(BufferIndexUniforms)]]) {
-    return float4(in.color.rgb, 1.0);
+    return float4(in.color.rgb, 1.0); // Outputs the material's base color
 }

@@ -2,20 +2,22 @@
 //  ShadowFragmentShader.metal
 //  NuwaEngine
 //
+//  Outputs depth information for shadow mapping.
+//
+//  Updated to align with ShaderTypes.h.
 //  Created by Wenyan Qin on 2024-11-12.
 //
 
 #include <metal_stdlib>
 using namespace metal;
 
-// Define a compatible structure for fragment shader input
-struct FragmentInput {
-    float4 shadowPosition [[position]]; // Position passed from the vertex shader
-};
-
-// Corrected shadow fragment shader
-fragment float4 shadowFragmentShader(FragmentInput in [[stage_in]], constant float &shadowIntensity [[buffer(0)]]) {
-    // Calculate shadow factor based on shadowPosition depth and shadowIntensity
-    float shadowFactor = in.shadowPosition.z < 0.5 ? shadowIntensity : 1.0;
-    return float4(shadowFactor, shadowFactor, shadowFactor, 1.0);
+// Fragment Shader
+//
+// Outputs depth value for shadow map.
+//
+// - Parameters:
+//   - in: Fragment data from the vertex shader.
+// - Returns: The depth of the fragment for shadow calculations.
+fragment float4 shadow_fragment(float4 position [[position]]) {
+    return float4(position.z, position.z, position.z, 1.0);  // Depth encoding
 }
