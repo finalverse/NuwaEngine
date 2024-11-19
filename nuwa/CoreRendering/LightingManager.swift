@@ -69,14 +69,18 @@ class LightingManager {
         updateLightBuffer()
     }
 
-    /// Updates the buffer with the current lights in the scene.
+    /// Updates the light buffer with the current lights in the scene.
+    /// Ensures the buffer is correctly aligned for Metal's expectations.
     func updateLightBuffer() {
         guard !lights.isEmpty else {
-            lightBuffer = nil // Clear the buffer if there are no lights
+            lightBuffer = nil // Clear the buffer if no lights exist
             return
         }
-        
-        // Re-create the light buffer with updated light data
-        lightBuffer = device.makeBuffer(bytes: lights, length: lights.count * MemoryLayout<LightData>.stride, options: [])
+
+        // Ensure correct memory layout and alignment for Metal
+        let dataSize = lights.count * MemoryLayout<LightData>.stride
+
+        // Create a new buffer with shared storage mode for CPU-GPU access
+        lightBuffer = device.makeBuffer(bytes: lights, length: dataSize, options: .storageModeShared)
     }
 }

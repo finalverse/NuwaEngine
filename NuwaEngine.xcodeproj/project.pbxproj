@@ -42,7 +42,8 @@
 				Entities/Primitives/GridEntity.swift,
 				Entities/Primitives/TerrainEntity.swift,
 				Entities/Primitives/TriangleEntity.swift,
-				Shaders/MasterShader.metal,
+				Shaders/AdvancedMaterialShader.metal,
+				Shaders/PostProcessingShader.metal,
 				Shaders/SharedShaders.metal,
 				Spatial/EngagementTracker.swift,
 				Spatial/ProceduralContentAdjuster.swift,
@@ -78,8 +79,8 @@
 				Entities/Primitives/GridEntity.swift,
 				Entities/Primitives/TerrainEntity.swift,
 				Entities/Primitives/TriangleEntity.swift,
-				Shaders/MasterShader.metal,
-				Shaders/SharedShaders.metal,
+				Shaders/AdvancedMaterialShader.metal,
+				Shaders/PostProcessingShader.metal,
 				Spatial/EngagementTracker.swift,
 				Spatial/ProceduralContentAdjuster.swift,
 			);
@@ -88,16 +89,15 @@
 		B2550A612CE7B0A500CC18D5 /* Exceptions for "nuwa" folder in "nuwa iOS" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Shaders/BasicLightingShader.metal,
+				Shaders/AdvancedMaterialShader.metal,
 				Shaders/BasicShader.metal,
 				Shaders/DeferredShader.metal,
 				Shaders/GeometryPassVertexShader.metal,
 				Shaders/LightingPassFragmentShader.metal,
-				Shaders/LightingShader.metal,
-				Shaders/MaterialShader.metal,
+				Shaders/PostProcessingShader.metal,
 				Shaders/ShadowFragmentShader.metal,
-				Shaders/ShadowShader.metal,
 				Shaders/ShadowVertexShader.metal,
+				Shaders/SharedShaders.metal,
 			);
 			target = B25506622CD93FB600CC18D5 /* nuwa iOS */;
 		};

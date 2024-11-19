@@ -3,8 +3,9 @@
 //  NuwaEngine
 //
 //  Transforms geometry into the light's clip space for shadow mapping.
+//  This is used in the shadow map generation pass.
 //
-//  Updated to align with ShaderTypes.h.
+//  Fully compatible with ShaderTypes.h.
 //  Created by Wenyan Qin on 2024-11-12.
 //
 
@@ -22,5 +23,5 @@ using namespace metal;
 // - Returns: Vertex position in the light's clip space.
 vertex float4 shadow_vertex(VertexIn in [[stage_in]],
                             constant float4x4 &lightMatrix [[buffer(BufferIndexUniforms)]]) {
-    return lightMatrix * float4(in.position, 1.0);
+    return lightMatrix * float4(in.position, 1.0); // Transform to light's clip space
 }

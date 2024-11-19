@@ -3,8 +3,9 @@
 //  NuwaEngine
 //
 //  Represents a ground plane grid with distinct colors for the X and Z axes, serving as a visual guide for the scene's coordinate space.
+//  Updated to align with the latest ShaderTypes and rendering pipeline.
 //
-//  Updated by ChatGPT on 2024-11-08.
+//  Updated by ChatGPT on 2024-11-19.
 //
 
 import Foundation
@@ -47,26 +48,42 @@ class GridEntity: Entity {
         let zAxisColor = SIMD4<Float>(0.0, 0.0, 1.0, 1.0)    // Blue for Z-axis
         let gridLineColor = SIMD4<Float>(0.5, 0.5, 0.5, 1.0) // Gray for other grid lines
 
+        let tangent = SIMD3<Float>(1.0, 0.0, 0.0)            // Tangent for normal mapping
+        let bitangent = SIMD3<Float>(0.0, 0.0, 1.0)          // Bitangent for normal mapping
+        let instanceID: UInt32 = 0                           // Default instance ID for non-instanced rendering
+
         for i in stride(from: -halfSize, through: halfSize, by: gridSpacing) {
             // Vertical lines (parallel to the Z-axis)
             vertices.append(Vertex(position: SIMD4<Float>(i, 0, -halfSize, 1),
                                    color: i == 0 ? zAxisColor : gridLineColor,
                                    normal: SIMD3<Float>(0, 1, 0),
-                                   texCoord: SIMD2<Float>(0, 0)))
+                                   texCoord: SIMD2<Float>(0, 0),
+                                   tangent: tangent,
+                                   bitangent: bitangent,
+                                   instanceID: instanceID))
             vertices.append(Vertex(position: SIMD4<Float>(i, 0, halfSize, 1),
                                    color: i == 0 ? zAxisColor : gridLineColor,
                                    normal: SIMD3<Float>(0, 1, 0),
-                                   texCoord: SIMD2<Float>(0, 0)))
+                                   texCoord: SIMD2<Float>(0, 0),
+                                   tangent: tangent,
+                                   bitangent: bitangent,
+                                   instanceID: instanceID))
 
             // Horizontal lines (parallel to the X-axis)
             vertices.append(Vertex(position: SIMD4<Float>(-halfSize, 0, i, 1),
                                    color: i == 0 ? xAxisColor : gridLineColor,
                                    normal: SIMD3<Float>(0, 1, 0),
-                                   texCoord: SIMD2<Float>(0, 0)))
+                                   texCoord: SIMD2<Float>(0, 0),
+                                   tangent: tangent,
+                                   bitangent: bitangent,
+                                   instanceID: instanceID))
             vertices.append(Vertex(position: SIMD4<Float>(halfSize, 0, i, 1),
                                    color: i == 0 ? xAxisColor : gridLineColor,
                                    normal: SIMD3<Float>(0, 1, 0),
-                                   texCoord: SIMD2<Float>(0, 0)))
+                                   texCoord: SIMD2<Float>(0, 0),
+                                   tangent: tangent,
+                                   bitangent: bitangent,
+                                   instanceID: instanceID))
         }
         return vertices
     }
@@ -77,7 +94,11 @@ class GridEntity: Entity {
         // Ensure all necessary resources are available
         guard let vertexBuffer = vertexBuffer,
               let uniformBuffer = uniformBuffer,
-              let pipelineState = shaderManager.getPipelineState(vertexShaderName: "vertex_main", fragmentShaderName: "fragment_main") else {
+              let pipelineState = shaderManager.getPipelineState(
+                vertexShaderName: "vertex_main",
+                fragmentShaderName: "fragment_main",
+                vertexDescriptor: createVertexDescriptor()
+              ) else {
             print("Warning: Missing vertex buffer, uniform buffer, or pipeline state.")
             return
         }

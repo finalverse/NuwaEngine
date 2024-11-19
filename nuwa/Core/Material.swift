@@ -2,17 +2,36 @@
 //  Material.swift
 //  NuwaEngine
 //
-//  The `Material` class represents visual properties of a surface, such as color, shininess, and optional texture.
-//  It includes methods for dynamically adjusting roughness and metallic properties.
+//  The `Material` class represents visual properties of a surface, such as color, shininess, roughness, metallicity, and optional texture.
+//  It integrates directly with the rendering pipeline and provides methods for dynamic property adjustment.
 //
-//  Created by Wenyan Qin on 2024-11-09.
+//  Updated on 2024-11-19.
 //
 
 import Foundation
 import Metal
 import MetalKit
 
+// MARK: - Shader-Compatible MaterialProperties Struct
+
+/// A struct representing material properties in a format compatible with shaders.
+struct MaterialProperties {
+    var diffuseColor: SIMD3<Float>
+    var specularColor: SIMD3<Float>
+    var shininess: Float
+    var roughness: Float
+    var metallic: Float
+    var emissiveColor: SIMD3<Float>
+    var reflectivity: Float
+    var hasTexture: Int32
+}
+
+// MARK: - Material Class
+
+/// Represents visual properties of a surface, including dynamic shader property binding.
 class Material {
+    // MARK: - Properties
+    
     var diffuseColor: SIMD3<Float>         // Base color of the material
     var specularColor: SIMD3<Float>        // Specular reflection color
     var shininess: Float                   // Shininess factor for specular highlights
@@ -21,108 +40,113 @@ class Material {
     var emissiveColor: SIMD3<Float> = .zero // Emissive color for glowing effects
     var reflectivity: Float = 0.0          // Reflectivity for mirror-like surfaces
     var hasTexture: Bool                   // Indicates if this material uses a texture
-    var texture: MTLTexture?               // Optional texture for the material
+    var texture: MTLTexture?               // Optional base color texture
+    var normalMap: MTLTexture?             // Optional normal map texture
+    var roughnessMap: MTLTexture?          // Optional roughness map texture
+    var metallicMap: MTLTexture?           // Optional metallic map texture
 
-    /// Initializes a Material instance with color and optional texture.
+    // MARK: - Initialization
+
+    /// Initializes a `Material` instance with color and optional textures.
     /// - Parameters:
     ///   - diffuseColor: The base color of the material.
     ///   - specularColor: The specular color for reflections.
     ///   - shininess: Shininess factor for specular highlights.
-    ///   - hasTexture: Flag indicating if a texture is used.
-    ///   - device: The Metal device used for creating the texture.
-    ///   - textureName: The name of the texture file in the Assets/Textures directory (optional).
+    ///   - hasTexture: Flag indicating if a base color texture is used.
+    ///   - device: The Metal device used for creating textures.
+    ///   - textureNames: Optional dictionary of texture names (e.g., baseColor, normalMap, etc.).
     init(diffuseColor: SIMD3<Float>,
          specularColor: SIMD3<Float>,
          shininess: Float,
          hasTexture: Bool,
          device: MTLDevice,
-         textureName: String? = nil) {
+         textureNames: [String: String]? = nil) {
         self.diffuseColor = diffuseColor
         self.specularColor = specularColor
         self.shininess = shininess
         self.hasTexture = hasTexture
 
-        // Load texture if textureName is provided and hasTexture is true
-        if let name = textureName, hasTexture {
-            self.texture = loadTexture(device: device, textureName: name)
+        // Load textures if provided
+        if let textureNames = textureNames {
+            self.texture = hasTexture ? loadTexture(device: device, textureName: textureNames["baseColor"]) : nil
+            self.normalMap = loadTexture(device: device, textureName: textureNames["normalMap"])
+            self.roughnessMap = loadTexture(device: device, textureName: textureNames["roughnessMap"])
+            self.metallicMap = loadTexture(device: device, textureName: textureNames["metallicMap"])
         }
     }
+
+    // MARK: - Texture Management
 
     /// Loads a texture from the specified file in the `Assets/Textures` folder.
     /// - Parameters:
     ///   - device: The Metal device used to create the texture.
     ///   - textureName: The name of the texture file (without file extension).
     /// - Returns: An optional `MTLTexture` if loading is successful.
-    private func loadTexture(device: MTLDevice, textureName: String) -> MTLTexture? {
-        guard let textureURL = Bundle.main.url(forResource: "Assets/Textures/\(textureName)", withExtension: "png") else {
-            print("Error: Texture file \(textureName) not found.")
+    private func loadTexture(device: MTLDevice, textureName: String?) -> MTLTexture? {
+        guard let name = textureName,
+              let textureURL = Bundle.main.url(forResource: "Assets/Textures/\(name)", withExtension: "png") else {
+            print("Warning: Texture \(textureName ?? "nil") not found.")
             return nil
         }
-        
+
         let textureLoader = MTKTextureLoader(device: device)
-        let options: [MTKTextureLoader.Option : Any] = [
-            .SRGB : false,
-            .origin : MTKTextureLoader.Origin.bottomLeft,
-            .generateMipmaps : true
+        let options: [MTKTextureLoader.Option: Any] = [
+            .SRGB: false,
+            .origin: MTKTextureLoader.Origin.bottomLeft,
+            .generateMipmaps: NSNumber(value: true)
         ]
-        
+
         do {
             let texture = try textureLoader.newTexture(URL: textureURL, options: options)
-            print("Texture \(textureName) loaded successfully.")
+            print("Texture \(name) loaded successfully.")
             return texture
         } catch {
-            print("Error loading texture \(textureName): \(error)")
+            print("Error loading texture \(name): \(error)")
             return nil
         }
     }
 
-    /// Sets the roughness of the material.
-    /// - Parameter roughness: Roughness value to apply.
-    func setRoughness(_ roughness: Float) {
-        self.roughness = roughness
-    }
+    // MARK: - Shader Compatibility
 
-    /// Sets the metallic property of the material.
-    /// - Parameter metallic: Metallic value to apply.
-    func setMetallic(_ metallic: Float) {
-        self.metallic = metallic
-    }
-
-    /// Resets the material properties to default values.
-    func resetProperties() {
-        self.roughness = 0.5
-        self.metallic = 0.0
-    }
-
-    /// Binds material properties and texture (if available) to the fragment shader.
-    /// - Parameter renderEncoder: The Metal render command encoder used to issue drawing commands.
-    func bindToShader(renderEncoder: MTLRenderCommandEncoder) {
-        // Define a struct for passing material properties to the shader
-        struct MaterialProperties {
-            var diffuseColor: SIMD3<Float>
-            var specularColor: SIMD3<Float>
-            var shininess: Float
-            var roughness: Float
-            var metallic: Float
-            var hasTexture: Int32
-        }
-
-        // Populate the material properties struct
-        var materialProperties = MaterialProperties(
+    /// Converts the `Material` class instance into a shader-compatible structure.
+    /// - Returns: A `MaterialProperties` struct compatible with `ShaderTypes.h`.
+    
+    func toShaderMaterial() -> ShaderMaterial {
+        return ShaderMaterial(
             diffuseColor: diffuseColor,
             specularColor: specularColor,
             shininess: shininess,
             roughness: roughness,
             metallic: metallic,
+            emissiveColor: emissiveColor,
+            reflectivity: reflectivity,
             hasTexture: hasTexture ? 1 : 0
         )
-        
+    }
+
+    // MARK: - Binding to Shader
+
+    /// Binds material properties and textures to the fragment shader.
+    /// - Parameter renderEncoder: The Metal render command encoder used to issue drawing commands.
+    func bindToShader(renderEncoder: MTLRenderCommandEncoder) {
+        // Populate the shader-compatible Material struct
+        var shaderMaterial = toShaderMaterial()
+
         // Bind the material properties to the fragment shader
-        renderEncoder.setFragmentBytes(&materialProperties, length: MemoryLayout<MaterialProperties>.stride, index: 1)
-        
-        // Bind the texture if available
+        renderEncoder.setFragmentBytes(&shaderMaterial, length: MemoryLayout<Material>.stride, index: 1)
+
+        // Bind textures
         if let texture = texture {
-            renderEncoder.setFragmentTexture(texture, index: 0) // Assuming 0 is TextureIndexColor
+            renderEncoder.setFragmentTexture(texture, index: Int(TextureIndexColor.rawValue))
+        }
+        if let normalMap = normalMap {
+            renderEncoder.setFragmentTexture(normalMap, index: Int(TextureIndexNormal.rawValue))
+        }
+        if let roughnessMap = roughnessMap {
+            renderEncoder.setFragmentTexture(roughnessMap, index: Int(TextureIndexRoughness.rawValue))
+        }
+        if let metallicMap = metallicMap {
+            renderEncoder.setFragmentTexture(metallicMap, index: Int(TextureIndexMetallic.rawValue))
         }
     }
 }

@@ -91,11 +91,21 @@ struct VertexOut {
     vector_float3 worldBitangent;         // Bitangent vector in world space
 };
 
-/// Material properties structure for shaders, containing basic material characteristics
-struct Material {
+/// Material properties structure for shaders, containing enhanced material characteristics.
+/// This structure is used to pass material properties from Swift to Metal shaders.
+///
+/// Notes:
+/// - This struct includes fields for diffuse color, specular highlights, and advanced
+///   material properties such as roughness and metallicity.
+/// - The `hasTexture` field is used to indicate whether a texture is applied.
+struct ShaderMaterial {
     vector_float3 diffuseColor;      // Base color of the material
     vector_float3 specularColor;     // Specular highlight color
     float shininess;                 // Shininess factor for specular reflections
+    float roughness;                 // Surface roughness (0 = smooth, 1 = rough)
+    float metallic;                  // Degree of metallicity (0 = non-metal, 1 = metal)
+    vector_float3 emissiveColor;     // Color emitted by the material (for glowing effects)
+    float reflectivity;              // Reflectivity factor (0 = no reflection, 1 = full reflection)
     int hasTexture;                  // Flag indicating if a texture is applied (1 = true, 0 = false)
 };
 
@@ -105,7 +115,7 @@ struct Uniforms {
     matrix_float4x4 viewProjectionMatrix; // Combined view-projection matrix
     vector_float3 cameraPosition;        // Camera position in world space for lighting calculations
     float padding;                       // Padding for alignment
-    struct Material material;            // Material properties for rendering the entity
+    struct ShaderMaterial material;      // Enhanced material properties for rendering the entity
 };
 
 #endif /* ShaderTypes_h */

@@ -38,7 +38,8 @@ class GameViewController: UIViewController {
         renderSystem.camera = camera
 
         // Add lights and entities
-        addLightsAndEntities(device: device, shaderManager: shaderManager)
+        addLights()
+        addEntities(device: device, shaderManager: shaderManager)
 
         // Configure the Metal view
         metalView.depthStencilPixelFormat = .depth32Float
@@ -70,31 +71,70 @@ class GameViewController: UIViewController {
         }
     }
 
-    /// Adds lights and entities to the scene, initializing the lighting manager with appropriate settings.
+    /// Adds entities to the scene.
     /// - Parameters:
-    ///   - device: The Metal device used for buffer creation.
-    ///   - shaderManager: The shader manager responsible for handling shaders.
-    private func addLightsAndEntities(device: MTLDevice, shaderManager: ShaderManager) {
+    ///   - device: The Metal device used for creating buffers and resources.
+    ///   - shaderManager: The shader manager used for managing shaders.
+    private func addEntities(device: MTLDevice, shaderManager: ShaderManager) {
+        guard let lightingManager = renderSystem.lightingManager else {
+            fatalError("Error: LightingManager is not initialized.")
+        }
+
+        // Add a simple triangle entity to the scene
+        let triangle = TriangleEntity(device: device, shaderManager: shaderManager, lightingManager: lightingManager)
+        scene.addEntity(triangle)
+
+        // Uncomment and add additional entities as needed
+        /*
+        // Add a sky plane entity
+        let skyPlane = SkyPlaneEntity(device: device, shaderManager: shaderManager, lightingManager: renderSystem.lightingManager)
+        scene.addEntity(skyPlane)
+
+        // Add a grid entity for the ground
+        let grid = GridEntity(device: device, shaderManager: shaderManager, lightingManager: renderSystem.lightingManager, gridSize: 10.0, gridSpacing: 0.5)
+        scene.addEntity(grid)
+
+        // Add axis indicators
+        let axis = AxisEntity(device: device, shaderManager: shaderManager, lightingManager: renderSystem.lightingManager, axisLength: 2.0)
+        scene.addEntity(axis)
+        */
+    }
+    
+    /// Adds ambient and directional lights to the scene using the `LightingManager`.
+    /// - Requires: The `LightingManager` must be initialized before calling this function.
+    func addLights() {
+        // Ensure the Metal device is available
+        guard let device = metalView.device else {
+            print("Error: Metal device is unavailable.")
+            return
+        }
+
         // Initialize the lighting manager
-        let lightingManager = LightingManager(device: device)
-        
-        // Define light properties and add them to the lighting manager
-        let ambientLight = LightData(type: .ambient, color: SIMD3<Float>(1, 1, 1), intensity: 0.2, position: SIMD3<Float>(0, 0, 0), direction: SIMD3<Float>(0, -1, 0))
-        let directionalLight = LightData(type: .directional, color: SIMD3<Float>(1, 1, 1), intensity: 0.8, position: SIMD3<Float>(0, 0, 0), direction: SIMD3<Float>(1, -1, 0))
-        
-        lightingManager.addLight(ambientLight)
+        let lightingManager = renderSystem.lightingManager ?? LightingManager(device: device)
+
+
+        // Create and configure a directional light
+        let directionalLight = LightData(
+            type: .directional,                     // Directional light type
+            color: SIMD3<Float>(1.0, 1.0, 1.0),     // White light
+            intensity: 0.8,                         // Moderate intensity
+            position: SIMD3<Float>(0.0, 0.0, 0.0),  // Not used for directional lights
+            direction: SIMD3<Float>(0.0, -1.0, 0.0) // Downward direction
+        )
         lightingManager.addLight(directionalLight)
-        
+
+        // Create and configure an ambient light
+        let ambientLight = LightData(
+            type: .ambient,                         // Ambient light type
+            color: SIMD3<Float>(0.5, 0.5, 0.5),     // Soft gray light
+            intensity: 0.2,                         // Low intensity
+            position: SIMD3<Float>(0.0, 0.0, 0.0),  // Not used for ambient lights
+            direction: SIMD3<Float>(0.0, 0.0, 0.0)  // Not used for ambient lights
+        )
+        lightingManager.addLight(ambientLight)
+
+        // Assign the lighting manager to the render system
         renderSystem.lightingManager = lightingManager
-
-        // Pass the lighting manager to the scene
-        scene.lightingManager = lightingManager
-
-        // Add entities to the scene with lighting manager support
-        //scene.addEntity(SkyPlaneEntity(device: device, shaderManager: shaderManager, lightingManager: lightingManager))
-        //scene.addEntity(GridEntity(device: device, shaderManager: shaderManager, lightingManager: lightingManager, gridSize: 10.0, gridSpacing: 0.5))
-        scene.addEntity(AxisEntity(device: device, shaderManager: shaderManager, lightingManager: lightingManager, axisLength: 2.0))
-        scene.addEntity(TriangleEntity(device: device, shaderManager: shaderManager, lightingManager: lightingManager))
     }
 }
 

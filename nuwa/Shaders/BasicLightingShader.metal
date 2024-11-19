@@ -4,7 +4,7 @@
 //
 //  Implements Phong lighting with ambient, diffuse, and specular components for multiple light sources.
 //
-//  Updated to align with ShaderTypes.h.
+//  Updated to align with ShaderTypes.h and ShaderMaterial.
 //  Created by Wenyan Qin on 2024-11-12.
 //
 
@@ -12,16 +12,23 @@
 #import "SharedShaders.metal"
 using namespace metal;
 
-// Vertex Shader: Transforms vertex attributes and passes interpolated attributes to the fragment shader.
+// Vertex Shader: Prepares interpolated vertex data for fragment shader.
 vertex VertexOut basicLighting_vertex(VertexIn in [[stage_in]],
                                       constant Uniforms &uniforms [[buffer(BufferIndexUniforms)]]) {
     VertexOut out;
+
+    // Transform position to world and clip space
     float4 worldPosition = uniforms.modelMatrix * float4(in.position, 1.0);
     out.worldPosition = worldPosition.xyz;
-    out.worldNormal = normalize((uniforms.modelMatrix * float4(in.normal, 0.0)).xyz);
     out.position = uniforms.viewProjectionMatrix * worldPosition;
+
+    // Transform normal to world space
+    out.worldNormal = normalize((uniforms.modelMatrix * float4(in.normal, 0.0)).xyz);
+
+    // Pass through attributes
     out.color = in.color;
     out.texCoord = in.texCoord;
+
     return out;
 }
 
@@ -41,10 +48,15 @@ fragment float4 basicLighting_fragment(VertexOut in [[stage_in]],
             ambient += lightColor * color;
         } else if (light.type == LightTypeDirectional) {
             float3 lightDir = normalize(light.direction);
-            diffuse += max(dot(in.worldNormal, lightDir), 0.0) * lightColor * color;
+            float NdotL = max(dot(in.worldNormal, lightDir), 0.0);
+
+            diffuse += NdotL * lightColor * color;
+
             float3 viewDir = normalize(uniforms.cameraPosition - in.worldPosition);
             float3 halfwayDir = normalize(lightDir + viewDir);
-            specular += pow(max(dot(in.worldNormal, halfwayDir), 0.0), uniforms.material.shininess) * lightColor;
+            float NdotH = max(dot(in.worldNormal, halfwayDir), 0.0);
+
+            specular += pow(NdotH, uniforms.material.shininess) * lightColor;
         }
     }
 

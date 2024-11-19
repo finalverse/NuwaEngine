@@ -6,6 +6,7 @@
 //  It creates a grid of vertices with height variations based on a noise function.
 //
 //  Created by Wenyan Qin on 2024-11-08.
+//  Updated on 2024-11-19.
 //
 
 import Foundation
@@ -14,9 +15,9 @@ import Metal
 
 /// Entity that represents procedurally generated terrain.
 class TerrainEntity: Entity {
-    private var vertices: [Vertex] = []    // Array to store generated vertices
-    let gridSize: Int                      // Number of grid points per dimension
-    let maxHeight: Float                   // Maximum height of the terrain
+    private var vertices: [Vertex] = []  // Array to store generated vertices
+    let gridSize: Int                    // Number of grid points per dimension
+    let maxHeight: Float                 // Maximum height of the terrain
 
     /// Initializes the terrain entity with grid size, max height, device, and shader manager.
     /// - Parameters:
@@ -39,10 +40,15 @@ class TerrainEntity: Entity {
         for x in 0..<gridSize {
             for z in 0..<gridSize {
                 let height = perlinNoise(x: Float(x), z: Float(z)) * maxHeight
-                vertices.append(Vertex(position: SIMD4<Float>(Float(x), height, Float(z), 1),
-                                       color: SIMD4<Float>(0.3, 0.8, 0.3, 1), // Greenish terrain color
-                                       normal: SIMD3<Float>(0, 1, 0),         // Upward normal
-                                       texCoord: SIMD2<Float>(Float(x) / Float(gridSize), Float(z) / Float(gridSize))))
+                vertices.append(Vertex(
+                    position: SIMD4<Float>(Float(x), height, Float(z), 1),
+                    color: SIMD4<Float>(0.3, 0.8, 0.3, 1),  // Greenish terrain color
+                    normal: SIMD3<Float>(0, 1, 0),         // Upward normal
+                    texCoord: SIMD2<Float>(Float(x) / Float(gridSize), Float(z) / Float(gridSize)),
+                    tangent: SIMD3<Float>(1, 0, 0),
+                    bitangent: SIMD3<Float>(0, 0, 1),
+                    instanceID: 0
+                ))
             }
         }
         setupVertexBuffer(with: vertices)
@@ -72,7 +78,11 @@ class TerrainEntity: Entity {
         }
         
         // Retrieve pipeline state from shaderManager
-        guard let pipelineState = shaderManager.getPipelineState(vertexShaderName: "vertex_main", fragmentShaderName: "fragment_main") else {
+        guard let pipelineState = shaderManager.getPipelineState(
+            vertexShaderName: "vertex_main",
+            fragmentShaderName: "fragment_main",
+            vertexDescriptor: createVertexDescriptor()
+        ) else {
             print("Error: Could not retrieve pipeline state.")
             return
         }
@@ -82,7 +92,7 @@ class TerrainEntity: Entity {
         renderEncoder.setVertexBuffer(uniformBuffer, offset: 0, index: 1)
         renderEncoder.setFragmentBuffer(uniformBuffer, offset: 0, index: 1)
         
-        material?.bindToShader(renderEncoder: renderEncoder)
+        material.bindToShader(renderEncoder: renderEncoder)
         renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
     }
 }
